@@ -521,6 +521,21 @@ async function startWriting() {
 }
 
 async function writeArticle(key, article) {
+  // Шаг 1: достаём картинки со страницы через PHP прокси (cURL обходит Cloudflare)
+  let images = [];
+  try {
+    const imgResp = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'fetch_images', url: article.url })
+    });
+    if (imgResp.ok) {
+      const imgData = await imgResp.json();
+      if (Array.isArray(imgData.images)) images = imgData.images;
+    }
+  } catch {}
+
+  // Шаг 2: рерайт через Claude напрямую
   const prompt = `Ты — опытный автор для Яндекс Дзен. Напиши увлекательную статью на русском языке на основе этой игровой новости.
 
 Заголовок: ${article.title_en || article.title_ru}
@@ -534,28 +549,14 @@ async function writeArticle(key, article) {
 - Формат: Markdown
 - Начни с цепляющего вступления
 - Добавь своё мнение/аналитику
-- Укажи в конце ссылку на источник
 
-Если ты нашёл изображения по URL статьи, укажи их в начале в формате:
-IMAGES: https://url1.jpg,https://url2.jpg
-===ARTICLE===
+Верни ТОЛЬКО текст статьи в Markdown, без лишних пояснений.`;
 
-Затем сам текст статьи в Markdown.`;
+  const data = await callClaude(key, prompt);
+  const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+  if (!text) throw new Error('Пустой ответ от API');
 
-  const data = await callClaude(key, prompt, [{ type: 'web_search_20250305', name: 'web_search', max_uses: 1 }]);
-  const raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
-  if (!raw) throw new Error('Пустой ответ от API');
-
-  const parts = raw.split('===ARTICLE===');
-  if (parts.length < 2) return { text: raw, images: [] };
-
-  const header = parts[0];
-  const articleText = parts.slice(1).join('===ARTICLE===').trim();
-  const imagesLine = header.match(/IMAGES:\s*(.+)/i);
-  const images = imagesLine
-    ? imagesLine[1].split(',').map(u => u.trim()).filter(u => u.startsWith('http') && /\.(jpg|jpeg|png|webp)/i.test(u))
-    : [];
-  return { text: articleText, images };
+  return { text, images };
 }
 
 /* ---- CLAUDE API ---- */
