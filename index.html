@@ -223,8 +223,21 @@
 
 <script>
 const SOURCES = {
-  pcgamer: { id: 'pcgamer', name: 'PC Gamer', rss: 'https://www.pcgamer.com/rss/', domain: 'pcgamer.com' },
-  insider: { id: 'insider', name: 'Insider Gaming', rss: 'https://insider-gaming.com/feed/', domain: 'insider-gaming.com' }
+  pcgamer: {
+    id: 'pcgamer', name: 'PC Gamer', domain: 'pcgamer.com',
+    rssUrls: [
+      'https://www.pcgamer.com/rss/news/',
+      'https://www.pcgamer.com/rss/',
+      'https://www.pcgamer.com/feeds/all.xml'
+    ]
+  },
+  insider: {
+    id: 'insider', name: 'Insider Gaming', domain: 'insider-gaming.com',
+    rssUrls: [
+      'https://insider-gaming.com/feed/',
+      'https://insider-gaming.com/rss/'
+    ]
+  }
 };
 
 let allArticles = { pcgamer: [], insider: [] };
@@ -271,6 +284,17 @@ function updateLoadBtn() {
 }
 
 /* ---- RSS FETCH ---- */
+async function fetchRSSWithFallback(rssUrls) {
+  let lastError = '';
+  for (const rssUrl of rssUrls) {
+    try {
+      const items = await fetchRSS(rssUrl);
+      if (items.length) return items;
+    } catch(e) { lastError = e.message; }
+  }
+  throw new Error(lastError || 'Не удалось загрузить ни одну RSS ленту');
+}
+
 async function fetchRSS(rssUrl) {
   const fetchers = [
     async () => {
@@ -295,20 +319,32 @@ async function fetchRSS(rssUrl) {
   for (const fetcher of fetchers) {
     try {
       const text = await fetcher();
+
+      if (text.trim().startsWith('<html') || text.trim().startsWith('<!DOCTYPE')) {
+        lastError = 'Получена HTML страница вместо RSS'; continue;
+      }
+
       const xml = new DOMParser().parseFromString(text, 'text/xml');
       if (xml.querySelector('parsererror')) { lastError = 'Ошибка разбора XML'; continue; }
-      const items = Array.from(xml.querySelectorAll('item'));
-      if (!items.length) { lastError = 'Лента пуста'; continue; }
-      return items.slice(0, 20).map(item => ({
-        title: item.querySelector('title')?.textContent?.trim() || '',
-        link: item.querySelector('link')?.textContent?.trim() ||
-              item.querySelector('guid')?.textContent?.trim() || '',
-        description: (item.querySelector('description')?.textContent || '')
-          .replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 400)
-      }));
+
+      // Поддержка RSS (<item>) и Atom (<entry>)
+      const isAtom = xml.querySelectorAll('entry').length > 0;
+      const selector = isAtom ? 'entry' : 'item';
+      const nodes = Array.from(xml.querySelectorAll(selector));
+      if (!nodes.length) { lastError = 'Лента пуста'; continue; }
+
+      return nodes.slice(0, 20).map(node => {
+        const title = node.querySelector('title')?.textContent?.trim() || '';
+        const link = isAtom
+          ? (node.querySelector('link[rel="alternate"]')?.getAttribute('href') || node.querySelector('link')?.getAttribute('href') || '')
+          : (node.querySelector('link')?.textContent?.trim() || node.querySelector('guid')?.textContent?.trim() || '');
+        const desc = (node.querySelector('description')?.textContent || node.querySelector('summary')?.textContent || node.querySelector('content')?.textContent || '')
+          .replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 400);
+        return { title, link, description: desc };
+      });
     } catch(e) { lastError = e.message; }
   }
-  throw new Error('Все прокси недоступны (' + lastError + ')');
+  throw new Error('Все прокси недоступны: ' + lastError);
 }
 
 /* ---- LOAD NEWS ---- */
@@ -329,9 +365,9 @@ async function startLoad() {
 
   try {
     setProgress(15, 'Загружаю RSS ленту...');
-    log(`→ RSS: ${src.rss}`);
+    log(`→ RSS: ${src.rssUrls[0]}`);
 
-    const items = await fetchRSS(src.rss);
+    const items = await fetchRSSWithFallback(src.rssUrls);
     log(`→ Получено ${items.length} записей из RSS`, 'ok');
     setProgress(40, 'Отправляю в Claude...');
 
@@ -475,40 +511,47 @@ async function startWriting() {
 async function writeArticle(key, article) {
   const prompt = `Зайди на эту страницу и прочитай статью полностью: ${article.url}
 
-Верни ответ строго в формате JSON (без markdown, без пояснений):
-{
-  "images": ["полный URL изображения 1 из статьи", "полный URL изображения 2"],
-  "article": "# Заголовок\\n\\nТекст статьи в Markdown..."
-}
+Верни ответ СТРОГО в следующем формате (две части, разделённые маркером):
 
-Требования к статье (поле "article"):
-- Формат: чистый Markdown с # заголовком, ## подзаголовками, лид-абзацем и итогом
+IMAGES: [через запятую прямые URL картинок со страницы, максимум 3, только .jpg/.jpeg/.png/.webp. Если нет — оставь пустым]
+===ARTICLE===
+# Цепляющий заголовок 6-10 слов
+
+Лид-абзац 2-3 предложения
+
+## Подзаголовок
+Текст блока
+
+## Подзаголовок
+Текст блока
+
+## Подзаголовок
+Текст блока
+
+Итоговый абзац с выводом и призывом к обсуждению
+
+Требования к статье:
 - Стиль: живой, вовлекающий, как у популярных русскоязычных игровых блогеров
 - Длина: 600-900 слов
 - Хороший русский язык, без калькирования с английского
-- Не упоминай источник и не делай внешних ссылок
-
-Требования к изображениям (поле "images"):
-- Только реальные прямые URL картинок со страницы статьи (.jpg, .jpeg, .png, .webp)
-- Максимум 3 изображения
-- Если изображений нет — пустой массив []`;
+- Не упоминай источник и не делай внешних ссылок`;
 
   const data = await callClaude(key, prompt, true);
   const raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
   if (!raw) throw new Error('Пустой ответ от API');
 
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return { text: raw, images: [] };
+  const parts = raw.split('===ARTICLE===');
+  if (parts.length < 2) return { text: raw, images: [] };
 
-  try {
-    const parsed = JSON.parse(jsonMatch[0]);
-    return {
-      text: parsed.article || raw,
-      images: Array.isArray(parsed.images) ? parsed.images.filter(u => u && u.startsWith('http')) : []
-    };
-  } catch(e) {
-    return { text: raw, images: [] };
-  }
+  const header = parts[0];
+  const articleText = parts.slice(1).join('===ARTICLE===').trim();
+
+  const imagesLine = header.match(/IMAGES:\s*(.+)/i);
+  const images = imagesLine
+    ? imagesLine[1].split(',').map(u => u.trim()).filter(u => u.startsWith('http') && /\.(jpg|jpeg|png|webp)/i.test(u))
+    : [];
+
+  return { text: articleText, images };
 }
 
 /* ---- CLAUDE API ---- */
