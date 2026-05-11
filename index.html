@@ -129,6 +129,13 @@
   .wi-error-msg { font-size: 13px; color: var(--danger); padding: 16px 20px; border-top: 1px solid var(--border); }
   .write-copy-all { background: none; border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 10px 20px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
   .write-copy-all:hover { background: var(--accent); color: #000; }
+  .wi-images { display: flex; gap: 8px; flex-wrap: wrap; padding: 16px 20px 0; }
+  .wi-img-wrap { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); flex-shrink: 0; }
+  .wi-img-wrap img { width: 120px; height: 80px; object-fit: cover; display: block; cursor: pointer; transition: opacity 0.15s; }
+  .wi-img-wrap img:hover { opacity: 0.8; }
+  .wi-img-copy { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: var(--accent); font-size: 10px; text-align: center; padding: 3px; cursor: pointer; opacity: 0; transition: opacity 0.15s; }
+  .wi-img-wrap:hover .wi-img-copy { opacity: 1; }
+  .wi-images-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 12px 20px 4px; }
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
@@ -429,12 +436,22 @@ async function startWriting() {
     document.getElementById('writeSubtitle').textContent =
       `Пишу ${i + 1} из ${selected.length}: ${a.title_ru || a.title_en}`;
     try {
-      const text = await writeArticle(key, a);
-      writtenTexts[i] = text;
+      const result = await writeArticle(key, a);
+      writtenTexts[i] = result;
       setWiStatus(i, 'done', '✓');
       document.getElementById(`wi-${i}`).classList.add('wi-done');
       const body = document.getElementById(`wib-${i}`);
-      body.innerHTML = `<div class="wi-text">${esc(text)}</div>`;
+      let imagesHtml = '';
+      if (result.images && result.images.length) {
+        imagesHtml = `<div class="wi-images-label">Изображения из оригинала</div>
+          <div class="wi-images">${result.images.map((url, ii) => `
+            <div class="wi-img-wrap">
+              <img src="${esc(url)}" alt="img" onerror="this.parentElement.style.display='none'" onclick="window.open('${esc(url)}','_blank')">
+              <div class="wi-img-copy" onclick="copyImgUrl('${esc(url)}',this)">⎘ URL</div>
+            </div>`).join('')}
+          </div>`;
+      }
+      body.innerHTML = imagesHtml + `<div style="padding:16px 20px 20px"><div class="wi-text">${esc(result.text)}</div></div>`;
       body.classList.add('open');
       document.getElementById(`wia-${i}`).innerHTML = `
         <button class="copy-btn" onclick="copyOne(${i},event)">⎘ Копировать</button>
@@ -458,36 +475,40 @@ async function startWriting() {
 async function writeArticle(key, article) {
   const prompt = `Зайди на эту страницу и прочитай статью полностью: ${article.url}
 
-Напиши на её основе статью для Яндекс Дзен на русском языке.
+Верни ответ строго в формате JSON (без markdown, без пояснений):
+{
+  "images": ["полный URL изображения 1 из статьи", "полный URL изображения 2"],
+  "article": "# Заголовок\\n\\nТекст статьи в Markdown..."
+}
 
-Формат — чистый Markdown:
-
-# [Цепляющий заголовок, 6-10 слов]
-
-[Лид: 2-3 предложения, заинтригуй читателя]
-
-## [Подзаголовок]
-[Развёрнутый блок]
-
-## [Подзаголовок]
-[Развёрнутый блок]
-
-## [Подзаголовок]
-[Развёрнутый блок]
-
-[Итоговый абзац: вывод и призыв к обсуждению]
-
-Требования:
+Требования к статье (поле "article"):
+- Формат: чистый Markdown с # заголовком, ## подзаголовками, лид-абзацем и итогом
 - Стиль: живой, вовлекающий, как у популярных русскоязычных игровых блогеров
 - Длина: 600-900 слов
 - Хороший русский язык, без калькирования с английского
 - Не упоминай источник и не делай внешних ссылок
-- Верни ТОЛЬКО текст статьи в Markdown, без пояснений`;
+
+Требования к изображениям (поле "images"):
+- Только реальные прямые URL картинок со страницы статьи (.jpg, .jpeg, .png, .webp)
+- Максимум 3 изображения
+- Если изображений нет — пустой массив []`;
 
   const data = await callClaude(key, prompt, true);
-  const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
-  if (!text) throw new Error('Пустой ответ от API');
-  return text;
+  const raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+  if (!raw) throw new Error('Пустой ответ от API');
+
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return { text: raw, images: [] };
+
+  try {
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      text: parsed.article || raw,
+      images: Array.isArray(parsed.images) ? parsed.images.filter(u => u && u.startsWith('http')) : []
+    };
+  } catch(e) {
+    return { text: raw, images: [] };
+  }
 }
 
 /* ---- CLAUDE API ---- */
@@ -526,16 +547,23 @@ function backToScout() {
 /* ---- COPY ---- */
 function copyOne(idx, e) {
   e.stopPropagation();
-  navigator.clipboard.writeText(writtenTexts[idx] || '');
+  const result = writtenTexts[idx];
+  navigator.clipboard.writeText(result?.text || result || '');
   const btn = e.target;
   btn.textContent = '✓ Скопировано';
   setTimeout(() => btn.textContent = '⎘ Копировать', 2000);
 }
 function copyAllWritten() {
-  navigator.clipboard.writeText(Object.values(writtenTexts).join('\n\n---\n\n'));
+  const all = Object.values(writtenTexts).map(r => r?.text || r).join('\n\n---\n\n');
+  navigator.clipboard.writeText(all);
   const btn = document.getElementById('writeCopyAll');
   btn.textContent = '✓ Скопировано!';
   setTimeout(() => btn.textContent = '⎘ Скопировать все статьи', 2000);
+}
+function copyImgUrl(url, el) {
+  navigator.clipboard.writeText(url);
+  el.textContent = '✓ Скопировано';
+  setTimeout(() => el.textContent = '⎘ URL', 2000);
 }
 
 /* ---- UI HELPERS ---- */
