@@ -222,24 +222,11 @@
 </div>
 
 <script>
+const PROXY_URL = 'https://akari42.tw1.ru/test/proxy.php';
+
 const SOURCES = {
-  pcgamer: {
-    id: 'pcgamer', name: 'PC Gamer', domain: 'pcgamer.com',
-    rssUrls: [
-      'https://news.google.com/rss/search?q=site:pcgamer.com+games&hl=en-US&gl=US&ceid=US:en',
-      'https://news.google.com/rss/search?q=pcgamer.com+game+news&hl=en-US&gl=US&ceid=US:en',
-      'https://www.pcgamer.com/rss/news/',
-      'https://www.pcgamer.com/rss/'
-    ]
-  },
-  insider: {
-    id: 'insider', name: 'Insider Gaming', domain: 'insider-gaming.com',
-    rssUrls: [
-      'https://insider-gaming.com/feed/',
-      'https://insider-gaming.com/rss/',
-      'https://news.google.com/rss/search?q=site:insider-gaming.com&hl=en-US&gl=US&ceid=US:en'
-    ]
-  }
+  pcgamer: { id: 'pcgamer', name: 'PC Gamer',        domain: 'pcgamer.com'        },
+  insider: { id: 'insider', name: 'Insider Gaming',  domain: 'insider-gaming.com' }
 };
 
 let allArticles = { pcgamer: [], insider: [] };
@@ -286,81 +273,6 @@ function updateLoadBtn() {
 }
 
 /* ---- RSS FETCH ---- */
-async function fetchRSSWithFallback(rssUrls) {
-  let lastError = '';
-  for (const rssUrl of rssUrls) {
-    try {
-      const items = await fetchRSS(rssUrl);
-      if (items.length) return items;
-    } catch(e) { lastError = e.message; }
-  }
-  throw new Error(lastError || 'Не удалось загрузить ни одну RSS ленту');
-}
-
-async function fetchRSS(rssUrl) {
-  const fetchers = [
-    async () => {
-      const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(rssUrl)}`);
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.text();
-    },
-    async () => {
-      const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`);
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const d = await r.json();
-      return d.contents;
-    },
-    async () => {
-      const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rssUrl)}`);
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.text();
-    }
-  ];
-
-  let lastError = '';
-  for (const fetcher of fetchers) {
-    try {
-      const text = await fetcher();
-
-      if (text.trim().startsWith('<html') || text.trim().startsWith('<!DOCTYPE')) {
-        lastError = 'Получена HTML страница вместо RSS'; continue;
-      }
-
-      const xml = new DOMParser().parseFromString(text, 'text/xml');
-      if (xml.querySelector('parsererror')) { lastError = 'Ошибка разбора XML'; continue; }
-
-      // Поддержка RSS (<item>) и Atom (<entry>)
-      const isAtom = xml.querySelectorAll('entry').length > 0;
-      const selector = isAtom ? 'entry' : 'item';
-      const nodes = Array.from(xml.querySelectorAll(selector));
-      if (!nodes.length) { lastError = 'Лента пуста'; continue; }
-
-      return nodes.slice(0, 20).map(node => {
-        const title = node.querySelector('title')?.textContent?.trim() || '';
-
-        let link = '';
-        if (isAtom) {
-          link = node.querySelector('link[rel="alternate"]')?.getAttribute('href')
-              || node.querySelector('link')?.getAttribute('href') || '';
-        } else {
-          // Google News wraps real URL inside <link> as a Google redirect — extract original
-          const rawLink = node.querySelector('link')?.textContent?.trim()
-                       || node.querySelector('guid')?.textContent?.trim() || '';
-          const urlMatch = rawLink.match(/url=([^&]+)/);
-          link = urlMatch ? decodeURIComponent(urlMatch[1]) : rawLink;
-        }
-
-        const desc = (node.querySelector('description')?.textContent
-                   || node.querySelector('summary')?.textContent
-                   || node.querySelector('content')?.textContent || '')
-          .replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 400);
-
-        return { title, link, description: desc };
-      });
-    } catch(e) { lastError = e.message; }
-  }
-  throw new Error('Все прокси недоступны: ' + lastError);
-}
 
 /* ---- LOAD NEWS ---- */
 async function startLoad() {
@@ -379,35 +291,10 @@ async function startLoad() {
   updateTabBadge(currentTab, null);
 
   try {
-    setProgress(15, 'Загружаю RSS ленту...');
-    log(`→ RSS: ${src.rssUrls[0]}`);
+    setProgress(20, 'Загружаю RSS и отправляю в Claude...');
+    log(`→ Источник: ${src.name}`);
 
-    const items = await fetchRSSWithFallback(src.rssUrls);
-    log(`→ Получено ${items.length} записей из RSS`, 'ok');
-    setProgress(40, 'Отправляю в Claude...');
-
-    const articlesText = items.map((a, i) =>
-      `${i + 1}. Заголовок: "${a.title}"\nОписание: "${a.description}"\nURL: ${a.link}`
-    ).join('\n\n');
-
-    const prompt = `Вот список статей с игрового новостного сайта на английском языке.
-
-${articlesText}
-
-Выбери ТОЛЬКО статьи про игры (без железа, периферии, мониторов, ноутбуков и т.п.) и верни JSON массив:
-[{
-  "title_en": "оригинальный заголовок",
-  "title_ru": "перевод на русский",
-  "desc_ru": "краткое описание 2-3 предложения о чём статья",
-  "url": "ссылка из списка",
-  "relevance": "high/medium/low",
-  "game": "название игры или пустая строка"
-}]
-
-Верни ТОЛЬКО валидный JSON массив без пояснений и markdown.`;
-
-    setProgress(60, 'Claude анализирует...');
-    const data = await callClaude(key, prompt, false);
+    const data = await callProxy(key, { action: 'load_news', source: currentTab });
     log('✓ Ответ получен', 'ok');
     setProgress(85, 'Парсю статьи...');
 
@@ -524,75 +411,39 @@ async function startWriting() {
 }
 
 async function writeArticle(key, article) {
-  const prompt = `Зайди на эту страницу и прочитай статью полностью: ${article.url}
+  const data = await callProxy(key, { action: 'write_article', url: article.url });
 
-Верни ответ СТРОГО в следующем формате (две части, разделённые маркером):
-
-IMAGES: [через запятую прямые URL картинок со страницы, максимум 3, только .jpg/.jpeg/.png/.webp. Если нет — оставь пустым]
-===ARTICLE===
-# Цепляющий заголовок 6-10 слов
-
-Лид-абзац 2-3 предложения
-
-## Подзаголовок
-Текст блока
-
-## Подзаголовок
-Текст блока
-
-## Подзаголовок
-Текст блока
-
-Итоговый абзац с выводом и призывом к обсуждению
-
-Требования к статье:
-- Стиль: живой, вовлекающий, как у популярных русскоязычных игровых блогеров
-- Длина: 600-900 слов
-- Хороший русский язык, без калькирования с английского
-- Не упоминай источник и не делай внешних ссылок`;
-
-  const data = await callClaude(key, prompt, true);
   const raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
   if (!raw) throw new Error('Пустой ответ от API');
 
+  // Images extracted by PHP from HTML
+  const phpImages = Array.isArray(data._images) ? data._images : [];
+
   const parts = raw.split('===ARTICLE===');
-  if (parts.length < 2) return { text: raw, images: [] };
+  if (parts.length < 2) return { text: raw, images: phpImages };
 
   const header = parts[0];
   const articleText = parts.slice(1).join('===ARTICLE===').trim();
 
   const imagesLine = header.match(/IMAGES:\s*(.+)/i);
-  const images = imagesLine
+  const claudeImages = imagesLine
     ? imagesLine[1].split(',').map(u => u.trim()).filter(u => u.startsWith('http') && /\.(jpg|jpeg|png|webp)/i.test(u))
     : [];
 
+  const images = claudeImages.length ? claudeImages : phpImages;
   return { text: articleText, images };
 }
 
-/* ---- CLAUDE API ---- */
-async function callClaude(key, prompt, useSearch) {
-  const body = {
-    model: 'claude-sonnet-4-5',
-    max_tokens: useSearch ? 4000 : 2000,
-    messages: [{ role: 'user', content: prompt }]
-  };
-  if (useSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
-
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+/* ---- PHP PROXY ---- */
+async function callProxy(key, payload) {
+  const resp = await fetch(PROXY_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify(body)
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ api_key: key, ...payload })
   });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err.error?.message || 'Ошибка ' + resp.status);
-  }
-  return resp.json();
+  const data = await resp.json();
+  if (!resp.ok || data.error) throw new Error(data.error || 'Ошибка ' + resp.status);
+  return data;
 }
 
 /* ---- BACK ---- */
