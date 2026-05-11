@@ -265,18 +265,29 @@ function updateLoadBtn() {
 
 /* ---- RSS FETCH ---- */
 async function fetchRSS(rssUrl) {
-  const proxies = [
-    `https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rssUrl)}`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`
+  const fetchers = [
+    async () => {
+      const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(rssUrl)}`);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    },
+    async () => {
+      const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      return d.contents;
+    },
+    async () => {
+      const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rssUrl)}`);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    }
   ];
 
   let lastError = '';
-  for (const proxyUrl of proxies) {
+  for (const fetcher of fetchers) {
     try {
-      const resp = await fetch(proxyUrl);
-      if (!resp.ok) { lastError = `HTTP ${resp.status}`; continue; }
-      const text = await resp.text();
+      const text = await fetcher();
       const xml = new DOMParser().parseFromString(text, 'text/xml');
       if (xml.querySelector('parsererror')) { lastError = 'Ошибка разбора XML'; continue; }
       const items = Array.from(xml.querySelectorAll('item'));
@@ -290,7 +301,7 @@ async function fetchRSS(rssUrl) {
       }));
     } catch(e) { lastError = e.message; }
   }
-  throw new Error('Все прокси недоступны: ' + lastError);
+  throw new Error('Все прокси недоступны (' + lastError + ')');
 }
 
 /* ---- LOAD NEWS ---- */
