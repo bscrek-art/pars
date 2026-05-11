@@ -16,8 +16,6 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.6; }
   .layout { display: flex; min-height: 100vh; }
-
-  /* Sidebar */
   .sidebar { width: 270px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 10; overflow-y: auto; }
   .logo { padding: 24px 20px 20px; border-bottom: 1px solid var(--border); }
   .logo-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--accent); letter-spacing: 0.02em; }
@@ -56,13 +54,9 @@
   .send-btn:hover { background: var(--accent); color: #000; }
   .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
   .send-btn:disabled:hover { background: var(--accent-dim); color: var(--accent); }
-
-  /* Main */
   .main { margin-left: 270px; flex: 1; padding: 32px; max-width: 900px; }
   .main-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: var(--text); }
   .main-sub { color: var(--muted); font-size: 13px; margin-top: 4px; margin-bottom: 24px; }
-
-  /* Tabs */
   .tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
   .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); padding: 10px 16px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; margin-bottom: -1px; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
   .tab-btn:hover { color: var(--text); }
@@ -71,8 +65,6 @@
   .tab-btn.active .tab-badge { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
   .tab-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
   .tab-btn.loaded .tab-dot { background: var(--accent); }
-
-  /* Progress / Log */
   .progress-wrap { margin-bottom: 20px; display: none; }
   .progress-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
   .progress-bar { height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
@@ -80,8 +72,6 @@
   .log-wrap { margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; display: none; max-height: 120px; overflow-y: auto; }
   .log-line { font-size: 11px; color: var(--muted); font-family: monospace; line-height: 1.8; }
   .log-line.ok { color: var(--accent); } .log-line.err { color: var(--danger); }
-
-  /* Article cards */
   .article-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; display: flex; gap: 16px; align-items: flex-start; transition: border-color 0.2s, background 0.2s; margin-bottom: 10px; }
   .article-card:hover { border-color: var(--border2); }
   .article-card.take { border-color: var(--accent); background: rgba(0,229,160,0.04); }
@@ -102,28 +92,22 @@
   .act-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all 0.15s; }
   .act-btn.take-btn:hover, .act-btn.take-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
   .act-btn.skip-btn:hover, .act-btn.skip-btn.active { background: var(--danger-dim); border-color: var(--danger); color: var(--danger); }
-
-  /* Empty state */
   .empty { text-align: center; padding: 80px 20px; color: var(--muted); }
   .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
   .empty-title { font-family: 'Syne', sans-serif; font-size: 18px; color: var(--text); margin-bottom: 8px; }
   .empty-desc { font-size: 13px; line-height: 1.6; max-width: 360px; margin: 0 auto; }
-
-  /* ===== WRITE STAGE ===== */
+  /* Write stage */
   .write-view { display: none; }
   .write-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
   .back-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
   .back-btn:hover { border-color: var(--accent); color: var(--accent); }
   .write-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; }
   .write-subtitle { font-size: 13px; color: var(--muted); margin-top: 2px; }
-
   .write-queue { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
-
   .write-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: border-color 0.2s; }
   .write-item.wi-processing { border-color: var(--pending); }
   .write-item.wi-done { border-color: var(--accent); }
   .write-item.wi-error { border-color: var(--danger); }
-
   .wi-header { padding: 16px 20px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
   .wi-status { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; }
   .wi-status.s-pending { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
@@ -131,26 +115,20 @@
   .wi-status.s-done { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); }
   .wi-status.s-error { background: var(--danger-dim); color: var(--danger); border: 1px solid var(--danger); }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
   .wi-info { flex: 1; min-width: 0; }
   .wi-name { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .wi-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
   .wi-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-
   .copy-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
   .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
   .toggle-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
   .toggle-btn:hover { background: var(--surface2); color: var(--text); }
-
   .wi-body { display: none; border-top: 1px solid var(--border); padding: 20px; }
   .wi-body.open { display: block; }
   .wi-text { font-size: 13px; line-height: 1.75; color: #c0c0cc; white-space: pre-wrap; font-family: 'Inter', sans-serif; }
-
   .wi-error-msg { font-size: 13px; color: var(--danger); padding: 16px 20px; border-top: 1px solid var(--border); }
-
   .write-copy-all { background: none; border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 10px 20px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
   .write-copy-all:hover { background: var(--accent); color: #000; }
-
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
@@ -161,9 +139,8 @@
   <aside class="sidebar">
     <div class="logo">
       <div class="logo-title">⬡ Разведчик</div>
-      <div class="logo-sub">News Scout · Яндекс Дзен</div>
+      <div class="logo-sub">News Scout · RSS Edition</div>
     </div>
-
     <div class="sidebar-section">
       <div class="sidebar-label">Claude API ключ</div>
       <div class="field-wrap">
@@ -172,67 +149,57 @@
       <button class="save-btn" onclick="saveSettings()">✓ Сохранить ключ</button>
       <div class="api-status" id="apiStatus"></div>
     </div>
-
     <button class="load-btn" id="loadBtn" onclick="startLoad()" disabled>
-      <span id="loadBtnIcon">↻</span>
+      <span>↻</span>
       <span id="loadBtnText">Загрузить новости</span>
     </button>
-
     <div class="stats-grid" id="statsGrid" style="display:none;">
       <div class="stat-box"><div class="stat-val" id="sTotal">0</div><div class="stat-lbl">Всего</div></div>
       <div class="stat-box"><div class="stat-val green" id="sTake">0</div><div class="stat-lbl">Взять</div></div>
       <div class="stat-box"><div class="stat-val red" id="sSkip">0</div><div class="stat-lbl">Пропустить</div></div>
       <div class="stat-box"><div class="stat-val yellow" id="sPending">0</div><div class="stat-lbl">Не решено</div></div>
     </div>
-
     <div class="filter-list" id="filterList" style="display:none;">
       <button class="filter-btn active" onclick="setFilter('all',this)"><span class="dot dot-all"></span>Все статьи</button>
       <button class="filter-btn" onclick="setFilter('pending',this)"><span class="dot dot-pending"></span>Не решено</button>
       <button class="filter-btn" onclick="setFilter('take',this)"><span class="dot dot-take"></span>Взять в работу</button>
       <button class="filter-btn" onclick="setFilter('skip',this)"><span class="dot dot-skip"></span>Пропустить</button>
     </div>
-
     <div class="sidebar-bottom">
       <button class="send-btn" id="sendBtn" disabled onclick="startWriting()">✦ Написать статьи</button>
     </div>
   </aside>
 
   <main class="main">
-
-    <!-- ===== SCOUT VIEW ===== -->
+    <!-- SCOUT VIEW -->
     <div id="scoutView">
       <div class="main-title">News Scout</div>
       <div class="main-sub" id="mainSub">Введи Claude API ключ слева и нажми «Загрузить новости»</div>
-
-      <div class="tabs" id="tabsBar">
+      <div class="tabs">
         <button class="tab-btn active" id="tab-pcgamer" onclick="switchTab('pcgamer',this)">
-          <span class="tab-dot" id="dot-pcgamer"></span>
-          PC Gamer
+          <span class="tab-dot" id="dot-pcgamer"></span>PC Gamer
           <span class="tab-badge" id="badge-pcgamer">—</span>
         </button>
         <button class="tab-btn" id="tab-insider" onclick="switchTab('insider',this)">
-          <span class="tab-dot" id="dot-insider"></span>
-          Insider Gaming
+          <span class="tab-dot" id="dot-insider"></span>Insider Gaming
           <span class="tab-badge" id="badge-insider">—</span>
         </button>
       </div>
-
       <div class="progress-wrap" id="progressWrap">
         <div class="progress-label"><span id="progressLabel">Загружаю...</span><span id="progressPct">0%</span></div>
         <div class="progress-bar"><div class="progress-inner" id="progressInner"></div></div>
       </div>
       <div class="log-wrap" id="logWrap"></div>
-
       <div id="articlesContainer">
         <div class="empty">
           <div class="empty-icon">◈</div>
           <div class="empty-title">Статьи ещё не загружены</div>
-          <div class="empty-desc">Введи настройки API слева, выбери вкладку и нажми «Загрузить новости».</div>
+          <div class="empty-desc">Введи API ключ слева, выбери вкладку и нажми «Загрузить новости».</div>
         </div>
       </div>
     </div>
 
-    <!-- ===== WRITE VIEW ===== -->
+    <!-- WRITE VIEW -->
     <div class="write-view" id="writeView">
       <div class="write-header">
         <button class="back-btn" onclick="backToScout()">← Назад</button>
@@ -241,19 +208,16 @@
           <div class="write-subtitle" id="writeSubtitle">Подготовка...</div>
         </div>
       </div>
-
       <div class="write-queue" id="writeQueue"></div>
-
       <button class="write-copy-all" id="writeCopyAll" style="display:none;" onclick="copyAllWritten()">⎘ Скопировать все статьи</button>
     </div>
-
   </main>
 </div>
 
 <script>
 const SOURCES = {
-  pcgamer: { id: 'pcgamer', name: 'PC Gamer', url: 'https://www.pcgamer.com/games/news/', domain: 'pcgamer.com' },
-  insider: { id: 'insider', name: 'Insider Gaming', url: 'https://insider-gaming.com/category/news/', domain: 'insider-gaming.com' }
+  pcgamer: { id: 'pcgamer', name: 'PC Gamer', rss: 'https://www.pcgamer.com/rss/', domain: 'pcgamer.com' },
+  insider: { id: 'insider', name: 'Insider Gaming', rss: 'https://insider-gaming.com/feed/', domain: 'insider-gaming.com' }
 };
 
 let allArticles = { pcgamer: [], insider: [] };
@@ -264,12 +228,9 @@ let writtenTexts = {};
 
 const savedKey = localStorage.getItem('pcg_api_key') || '';
 document.getElementById('apiKey').value = savedKey;
-if (savedKey) {
-  setApiStatus(true);
-  document.getElementById('loadBtn').disabled = false;
-}
+if (savedKey) { setApiStatus(true); document.getElementById('loadBtn').disabled = false; }
 
-/* ===================== SETTINGS ===================== */
+/* ---- SETTINGS ---- */
 function saveSettings() {
   const key = document.getElementById('apiKey').value.trim();
   if (!key.startsWith('sk-ant-')) { setApiStatus(false, 'Ключ должен начинаться с sk-ant-'); return; }
@@ -277,14 +238,13 @@ function saveSettings() {
   setApiStatus(true);
   document.getElementById('loadBtn').disabled = false;
 }
-
 function setApiStatus(ok, msg) {
   const el = document.getElementById('apiStatus');
   if (ok) { el.textContent = '✓ Настройки сохранены'; el.className = 'api-status ok'; }
   else { el.textContent = '✗ ' + (msg || 'Ошибка'); el.className = 'api-status err'; }
 }
 
-/* ===================== TABS ===================== */
+/* ---- TABS ---- */
 function switchTab(tabId, btn) {
   currentTab = tabId;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -292,21 +252,35 @@ function switchTab(tabId, btn) {
   currentFilter = 'all';
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('.filter-btn').classList.add('active');
-  const hasArticles = allArticles[currentTab].length > 0;
-  document.getElementById('statsGrid').style.display = hasArticles ? 'grid' : 'none';
-  document.getElementById('filterList').style.display = hasArticles ? 'flex' : 'none';
-  renderArticles();
-  updateStats();
-  updateLoadBtn();
+  const has = allArticles[currentTab].length > 0;
+  document.getElementById('statsGrid').style.display = has ? 'grid' : 'none';
+  document.getElementById('filterList').style.display = has ? 'flex' : 'none';
+  renderArticles(); updateStats(); updateLoadBtn();
 }
-
 function updateLoadBtn() {
   const src = SOURCES[currentTab];
-  const loaded = allArticles[currentTab].length > 0;
-  document.getElementById('loadBtnText').textContent = loaded ? `Обновить ${src.name}` : `Загрузить ${src.name}`;
+  document.getElementById('loadBtnText').textContent =
+    allArticles[currentTab].length > 0 ? `Обновить ${src.name}` : `Загрузить ${src.name}`;
 }
 
-/* ===================== LOAD NEWS ===================== */
+/* ---- RSS FETCH ---- */
+async function fetchRSS(rssUrl) {
+  const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`;
+  const resp = await fetch(proxy);
+  if (!resp.ok) throw new Error('Не удалось загрузить RSS ленту');
+  const text = await resp.text();
+  const xml = new DOMParser().parseFromString(text, 'text/xml');
+  const items = Array.from(xml.querySelectorAll('item'));
+  return items.slice(0, 20).map(item => ({
+    title: item.querySelector('title')?.textContent?.trim() || '',
+    link: item.querySelector('link')?.textContent?.trim() ||
+          item.querySelector('guid')?.textContent?.trim() || '',
+    description: (item.querySelector('description')?.textContent || '')
+      .replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 400)
+  }));
+}
+
+/* ---- LOAD NEWS ---- */
 async function startLoad() {
   const key = document.getElementById('apiKey').value.trim();
   const src = SOURCES[currentTab];
@@ -322,54 +296,63 @@ async function startLoad() {
   renderArticles();
   updateTabBadge(currentTab, null);
 
-  setProgress(10, 'Подключаюсь к API...');
-  log(`→ Источник: ${src.name}`);
-
   try {
-    const prompt = `Зайди на страницу ${src.url} и найди последние игровые новости.
+    setProgress(15, 'Загружаю RSS ленту...');
+    log(`→ RSS: ${src.rss}`);
 
-Верни JSON массив из 8-12 статей ТОЛЬКО про игры (без железа и периферии):
+    const items = await fetchRSS(src.rss);
+    log(`→ Получено ${items.length} записей из RSS`, 'ok');
+    setProgress(40, 'Отправляю в Claude...');
+
+    const articlesText = items.map((a, i) =>
+      `${i + 1}. Заголовок: "${a.title}"\nОписание: "${a.description}"\nURL: ${a.link}`
+    ).join('\n\n');
+
+    const prompt = `Вот список статей с игрового новостного сайта на английском языке.
+
+${articlesText}
+
+Выбери ТОЛЬКО статьи про игры (без железа, периферии, мониторов, ноутбуков и т.п.) и верни JSON массив:
 [{
   "title_en": "оригинальный заголовок",
   "title_ru": "перевод на русский",
   "desc_ru": "краткое описание 2-3 предложения о чём статья",
-  "url": "полная ссылка",
+  "url": "ссылка из списка",
   "relevance": "high/medium/low",
   "game": "название игры или пустая строка"
 }]
 
 Верни ТОЛЬКО валидный JSON массив без пояснений и markdown.`;
 
-    setProgress(30, `Анализирую ${src.name}...`);
-
-    const data = await callClaude(key, prompt);
+    setProgress(60, 'Claude анализирует...');
+    const data = await callClaude(key, prompt, false);
     log('✓ Ответ получен', 'ok');
     setProgress(85, 'Парсю статьи...');
 
     const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
     const match = text.match(/\[[\s\S]*\]/);
-    if (!match) throw new Error('Не удалось найти статьи в ответе. Попробуй ещё раз.');
+    if (!match) throw new Error('Не удалось разобрать ответ. Попробуй ещё раз.');
 
     const parsed = JSON.parse(match[0]);
     allArticles[currentTab] = parsed.map((a, i) => ({ ...a, id: i + 1, source: currentTab }));
     allArticles[currentTab].forEach(a => { allDecisions[currentTab][a.id] = 'pending'; });
 
     setProgress(100, 'Готово!');
-    log(`✓ Найдено ${allArticles[currentTab].length} статей`, 'ok');
+    log(`✓ Найдено ${allArticles[currentTab].length} игровых статей`, 'ok');
 
     setTimeout(() => {
       document.getElementById('progressWrap').style.display = 'none';
       document.getElementById('logWrap').style.display = 'none';
       document.getElementById('statsGrid').style.display = 'grid';
       document.getElementById('filterList').style.display = 'flex';
-      document.getElementById('mainSub').textContent = `Обновлено только что · ${allArticles[currentTab].length} статей из ${src.name}`;
+      document.getElementById('mainSub').textContent =
+        `Обновлено только что · ${allArticles[currentTab].length} статей из ${src.name}`;
       updateTabBadge(currentTab, allArticles[currentTab].length);
       document.getElementById(`tab-${currentTab}`).classList.add('loaded');
-      renderArticles();
-      updateStats();
+      renderArticles(); updateStats();
       document.getElementById('loadBtn').disabled = false;
       updateLoadBtn();
-    }, 600);
+    }, 500);
 
   } catch(e) {
     log('✗ ' + e.message, 'err');
@@ -384,33 +367,30 @@ async function startLoad() {
   }
 }
 
-/* ===================== WRITE STAGE ===================== */
+/* ---- WRITE STAGE ---- */
 async function startWriting() {
   const selected = [];
   Object.keys(SOURCES).forEach(srcId => {
-    allArticles[srcId]
-      .filter(a => allDecisions[srcId][a.id] === 'take')
+    allArticles[srcId].filter(a => allDecisions[srcId][a.id] === 'take')
       .forEach(a => selected.push({ ...a, srcName: SOURCES[srcId].name }));
   });
-  if (selected.length === 0) return;
+  if (!selected.length) return;
 
   writtenTexts = {};
-
   document.getElementById('scoutView').style.display = 'none';
   document.getElementById('writeView').style.display = 'block';
   document.getElementById('loadBtn').disabled = true;
-  document.getElementById('loadBtnText').textContent = 'Загрузить новости';
   document.getElementById('writeCopyAll').style.display = 'none';
-  document.getElementById('writeSubtitle').textContent = `Обрабатываю ${selected.length} ${plural(selected.length, 'статью', 'статьи', 'статей')}...`;
+  document.getElementById('writeSubtitle').textContent =
+    `Обрабатываю ${selected.length} ${plural(selected.length, 'статью', 'статьи', 'статей')}...`;
 
-  const queue = document.getElementById('writeQueue');
-  queue.innerHTML = selected.map((a, i) => `
+  document.getElementById('writeQueue').innerHTML = selected.map((a, i) => `
     <div class="write-item" id="wi-${i}">
       <div class="wi-header" onclick="toggleWiBody(${i})">
         <div class="wi-status s-pending" id="wis-${i}">○</div>
         <div class="wi-info">
           <div class="wi-name">${esc(a.title_ru || a.title_en)}</div>
-          <div class="wi-meta">${esc(a.srcName)} · <a href="${esc(a.url)}" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none;">${esc(a.url)}</a></div>
+          <div class="wi-meta">${esc(a.srcName)}</div>
         </div>
         <div class="wi-actions" id="wia-${i}"></div>
       </div>
@@ -422,32 +402,31 @@ async function startWriting() {
   for (let i = 0; i < selected.length; i++) {
     const a = selected[i];
     setWiStatus(i, 'processing', '↻');
-    document.getElementById('writeSubtitle').textContent = `Пишу статью ${i + 1} из ${selected.length}: ${a.title_ru || a.title_en}`;
-
+    document.getElementById('writeSubtitle').textContent =
+      `Пишу ${i + 1} из ${selected.length}: ${a.title_ru || a.title_en}`;
     try {
       const text = await writeArticle(key, a);
       writtenTexts[i] = text;
       setWiStatus(i, 'done', '✓');
       document.getElementById(`wi-${i}`).classList.add('wi-done');
-
       const body = document.getElementById(`wib-${i}`);
       body.innerHTML = `<div class="wi-text">${esc(text)}</div>`;
       body.classList.add('open');
-
       document.getElementById(`wia-${i}`).innerHTML = `
-        <button class="copy-btn" onclick="copyOne(${i}, event)">⎘ Копировать</button>
+        <button class="copy-btn" onclick="copyOne(${i},event)">⎘ Копировать</button>
         <button class="toggle-btn" onclick="toggleWiBody(${i})">▲</button>`;
-
     } catch(e) {
       setWiStatus(i, 'error', '✗');
       document.getElementById(`wi-${i}`).classList.add('wi-error');
-      document.getElementById(`wib-${i}`).innerHTML = `<div class="wi-error-msg">Ошибка: ${esc(e.message)}</div>`;
+      document.getElementById(`wib-${i}`).innerHTML =
+        `<div class="wi-error-msg">Ошибка: ${esc(e.message)}</div>`;
       document.getElementById(`wib-${i}`).classList.add('open');
     }
   }
 
   const doneCount = Object.keys(writtenTexts).length;
-  document.getElementById('writeSubtitle').textContent = `Готово · ${doneCount} из ${selected.length} написано`;
+  document.getElementById('writeSubtitle').textContent =
+    `Готово · ${doneCount} из ${selected.length} написано`;
   if (doneCount > 0) document.getElementById('writeCopyAll').style.display = 'flex';
   document.getElementById('loadBtn').disabled = false;
 }
@@ -461,82 +440,100 @@ async function writeArticle(key, article) {
 
 # [Цепляющий заголовок, 6-10 слов]
 
-[Лид: 2-3 предложения, заинтригуй читателя, объясни суть]
+[Лид: 2-3 предложения, заинтригуй читателя]
 
 ## [Подзаголовок]
-[Развёрнутый блок текста]
+[Развёрнутый блок]
 
 ## [Подзаголовок]
-[Развёрнутый блок текста]
+[Развёрнутый блок]
 
 ## [Подзаголовок]
-[Развёрнутый блок текста]
+[Развёрнутый блок]
 
-[Итоговый абзац: вывод, мнение, призыв к обсуждению]
+[Итоговый абзац: вывод и призыв к обсуждению]
 
 Требования:
-- Стиль: живой, вовлекающий, как у популярных русскоязычных игровых блогеров — без сухости, с эмоциями, без кликбейта
+- Стиль: живой, вовлекающий, как у популярных русскоязычных игровых блогеров
 - Длина: 600-900 слов
-- Язык: хороший русский, без калькирования с английского
-- Не упоминай источник и не делай ссылок
+- Хороший русский язык, без калькирования с английского
+- Не упоминай источник и не делай внешних ссылок
 - Верни ТОЛЬКО текст статьи в Markdown, без пояснений`;
 
-  const data = await callClaude(key, prompt);
+  const data = await callClaude(key, prompt, true);
   const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
   if (!text) throw new Error('Пустой ответ от API');
   return text;
 }
 
-/* ===================== BACK ===================== */
+/* ---- CLAUDE API ---- */
+async function callClaude(key, prompt, useSearch) {
+  const body = {
+    model: 'claude-sonnet-4-5',
+    max_tokens: useSearch ? 4000 : 2000,
+    messages: [{ role: 'user', content: prompt }]
+  };
+  if (useSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Ошибка ' + resp.status);
+  }
+  return resp.json();
+}
+
+/* ---- BACK ---- */
 function backToScout() {
   document.getElementById('writeView').style.display = 'none';
   document.getElementById('scoutView').style.display = 'block';
   updateLoadBtn();
 }
 
-/* ===================== COPY ===================== */
+/* ---- COPY ---- */
 function copyOne(idx, e) {
   e.stopPropagation();
-  const text = writtenTexts[idx];
-  if (!text) return;
-  navigator.clipboard.writeText(text);
+  navigator.clipboard.writeText(writtenTexts[idx] || '');
   const btn = e.target;
   btn.textContent = '✓ Скопировано';
   setTimeout(() => btn.textContent = '⎘ Копировать', 2000);
 }
-
 function copyAllWritten() {
-  const all = Object.values(writtenTexts).join('\n\n---\n\n');
-  navigator.clipboard.writeText(all);
+  navigator.clipboard.writeText(Object.values(writtenTexts).join('\n\n---\n\n'));
   const btn = document.getElementById('writeCopyAll');
   btn.textContent = '✓ Скопировано!';
   setTimeout(() => btn.textContent = '⎘ Скопировать все статьи', 2000);
 }
 
-/* ===================== UI HELPERS ===================== */
+/* ---- UI HELPERS ---- */
 function setWiStatus(i, cls, icon) {
   const el = document.getElementById(`wis-${i}`);
   el.className = `wi-status s-${cls}`;
   el.textContent = icon;
 }
-
 function toggleWiBody(i) {
   const body = document.getElementById(`wib-${i}`);
   const btn = document.querySelector(`#wia-${i} .toggle-btn`);
   body.classList.toggle('open');
   if (btn) btn.textContent = body.classList.contains('open') ? '▲' : '▼';
 }
-
 function updateTabBadge(tabId, count) {
   document.getElementById('badge-' + tabId).textContent = count === null ? '—' : count;
 }
-
 function setProgress(pct, label) {
   document.getElementById('progressInner').style.width = pct + '%';
   document.getElementById('progressLabel').textContent = label;
   document.getElementById('progressPct').textContent = Math.round(pct) + '%';
 }
-
 function log(msg, type) {
   const wrap = document.getElementById('logWrap');
   const line = document.createElement('div');
@@ -545,49 +542,40 @@ function log(msg, type) {
   wrap.appendChild(line);
   wrap.scrollTop = wrap.scrollHeight;
 }
-
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
 function plural(n, one, few, many) {
-  const mod10 = n % 10, mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return one;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  const m = n % 10, h = n % 100;
+  if (m === 1 && h !== 11) return one;
+  if (m >= 2 && m <= 4 && (h < 10 || h >= 20)) return few;
   return many;
 }
 
-/* ===================== DECIDE / FILTER / STATS ===================== */
+/* ---- DECIDE / STATS / FILTER / RENDER ---- */
 function decide(id, action) {
   allDecisions[currentTab][id] = allDecisions[currentTab][id] === action ? 'pending' : action;
-  renderArticles();
-  updateStats();
+  renderArticles(); updateStats();
 }
-
 function updateStats() {
-  const decisions = allDecisions[currentTab];
-  const articles = allArticles[currentTab];
-  const take = Object.values(decisions).filter(d => d === 'take').length;
-  const skip = Object.values(decisions).filter(d => d === 'skip').length;
-  const pending = Object.values(decisions).filter(d => d === 'pending').length;
-  document.getElementById('sTotal').textContent = articles.length;
-  document.getElementById('sTake').textContent = take;
-  document.getElementById('sSkip').textContent = skip;
-  document.getElementById('sPending').textContent = pending;
-  const totalTake = Object.keys(allDecisions).reduce((sum, src) =>
-    sum + Object.values(allDecisions[src]).filter(d => d === 'take').length, 0);
+  const d = allDecisions[currentTab];
+  const a = allArticles[currentTab];
+  document.getElementById('sTotal').textContent = a.length;
+  document.getElementById('sTake').textContent = Object.values(d).filter(x => x === 'take').length;
+  document.getElementById('sSkip').textContent = Object.values(d).filter(x => x === 'skip').length;
+  document.getElementById('sPending').textContent = Object.values(d).filter(x => x === 'pending').length;
+  const total = Object.keys(allDecisions).reduce((s, k) =>
+    s + Object.values(allDecisions[k]).filter(x => x === 'take').length, 0);
   const btn = document.getElementById('sendBtn');
-  btn.disabled = totalTake === 0;
-  btn.textContent = totalTake > 0 ? `✦ Написать статьи (${totalTake})` : '✦ Написать статьи';
+  btn.disabled = total === 0;
+  btn.textContent = total > 0 ? `✦ Написать статьи (${total})` : '✦ Написать статьи';
 }
-
 function setFilter(f, btn) {
   currentFilter = f;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderArticles();
 }
-
 function renderArticles() {
   const container = document.getElementById('articlesContainer');
   const articles = allArticles[currentTab];
@@ -595,19 +583,18 @@ function renderArticles() {
   const src = SOURCES[currentTab];
   const list = articles.filter(a => currentFilter === 'all' || decisions[a.id] === currentFilter);
 
-  if (articles.length === 0) {
-    container.innerHTML = `<div class="empty"><div class="empty-icon">◈</div><div class="empty-title">Статьи ещё не загружены</div><div class="empty-desc">Нажми «Загрузить ${src.name}» чтобы получить свежие новости.</div></div>`;
+  if (!articles.length) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">◈</div><div class="empty-title">Статьи ещё не загружены</div><div class="empty-desc">Нажми «Загрузить ${src.name}».</div></div>`;
     return;
   }
-  if (list.length === 0) {
+  if (!list.length) {
     container.innerHTML = `<div class="empty"><div class="empty-icon">◌</div><div class="empty-title">Нет статей в этой категории</div><div class="empty-desc">Переключи фильтр.</div></div>`;
     return;
   }
-
   container.innerHTML = list.map(a => {
     const dec = decisions[a.id];
-    const relClass = { high:'high', medium:'medium', low:'low' }[a.relevance] || 'low';
-    const relLabel = { high:'🔥 Топ', medium:'· Интересно', low:'· Обычное' }[a.relevance] || '· Обычное';
+    const relClass = {high:'high',medium:'medium',low:'low'}[a.relevance] || 'low';
+    const relLabel = {high:'🔥 Топ',medium:'· Интересно',low:'· Обычное'}[a.relevance] || '· Обычное';
     return `<div class="article-card ${dec==='take'?'take':dec==='skip'?'skip':''}">
       <div class="article-num">${a.id}</div>
       <div class="article-body">
@@ -626,30 +613,6 @@ function renderArticles() {
       </div>
     </div>`;
   }).join('');
-}
-
-/* ===================== API ===================== */
-async function callClaude(key, prompt) {
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 4000,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err.error?.message || 'Ошибка ' + resp.status);
-  }
-  return resp.json();
 }
 </script>
 </body>
