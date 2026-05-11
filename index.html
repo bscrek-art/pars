@@ -226,16 +226,18 @@ const SOURCES = {
   pcgamer: {
     id: 'pcgamer', name: 'PC Gamer', domain: 'pcgamer.com',
     rssUrls: [
+      'https://news.google.com/rss/search?q=site:pcgamer.com+games&hl=en-US&gl=US&ceid=US:en',
+      'https://news.google.com/rss/search?q=pcgamer.com+game+news&hl=en-US&gl=US&ceid=US:en',
       'https://www.pcgamer.com/rss/news/',
-      'https://www.pcgamer.com/rss/',
-      'https://www.pcgamer.com/feeds/all.xml'
+      'https://www.pcgamer.com/rss/'
     ]
   },
   insider: {
     id: 'insider', name: 'Insider Gaming', domain: 'insider-gaming.com',
     rssUrls: [
       'https://insider-gaming.com/feed/',
-      'https://insider-gaming.com/rss/'
+      'https://insider-gaming.com/rss/',
+      'https://news.google.com/rss/search?q=site:insider-gaming.com&hl=en-US&gl=US&ceid=US:en'
     ]
   }
 };
@@ -335,11 +337,24 @@ async function fetchRSS(rssUrl) {
 
       return nodes.slice(0, 20).map(node => {
         const title = node.querySelector('title')?.textContent?.trim() || '';
-        const link = isAtom
-          ? (node.querySelector('link[rel="alternate"]')?.getAttribute('href') || node.querySelector('link')?.getAttribute('href') || '')
-          : (node.querySelector('link')?.textContent?.trim() || node.querySelector('guid')?.textContent?.trim() || '');
-        const desc = (node.querySelector('description')?.textContent || node.querySelector('summary')?.textContent || node.querySelector('content')?.textContent || '')
+
+        let link = '';
+        if (isAtom) {
+          link = node.querySelector('link[rel="alternate"]')?.getAttribute('href')
+              || node.querySelector('link')?.getAttribute('href') || '';
+        } else {
+          // Google News wraps real URL inside <link> as a Google redirect — extract original
+          const rawLink = node.querySelector('link')?.textContent?.trim()
+                       || node.querySelector('guid')?.textContent?.trim() || '';
+          const urlMatch = rawLink.match(/url=([^&]+)/);
+          link = urlMatch ? decodeURIComponent(urlMatch[1]) : rawLink;
+        }
+
+        const desc = (node.querySelector('description')?.textContent
+                   || node.querySelector('summary')?.textContent
+                   || node.querySelector('content')?.textContent || '')
           .replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 400);
+
         return { title, link, description: desc };
       });
     } catch(e) { lastError = e.message; }
