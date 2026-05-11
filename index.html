@@ -222,13 +222,21 @@
 </div>
 
 <script>
+const PROXY_URL = 'https://akari42.tw1.ru/test/proxy.php';
+
 const SOURCES = {
   pcgamer: {
     id: 'pcgamer', name: 'PC Gamer', domain: 'pcgamer.com',
-    rssUrls: ['https://www.pcgamer.com/rss/news/', 'https://www.pcgamer.com/rss/']
+    useProxy: true,
+    rssUrls: [
+      'https://www.pcgamer.com/rss/news/',
+      'https://www.pcgamer.com/rss/',
+      'https://news.google.com/rss/search?q=site:pcgamer.com+games&hl=en-US&gl=US&ceid=US:en'
+    ]
   },
   insider: {
     id: 'insider', name: 'Insider Gaming', domain: 'insider-gaming.com',
+    useProxy: false,
     rssUrls: ['https://insider-gaming.com/feed/', 'https://insider-gaming.com/rss/']
   }
 };
@@ -279,30 +287,57 @@ function updateLoadBtn() {
 /* ---- RSS FETCH ---- */
 async function fetchRSS(url) {
   const proxies = [
-    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-    u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    async u => {
+      const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(u)}`, { signal: AbortSignal.timeout(10000) });
+      if (!r.ok) throw new Error('bad status');
+      return r.text();
+    },
+    async u => {
+      const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`, { signal: AbortSignal.timeout(10000) });
+      if (!r.ok) throw new Error('bad status');
+      const j = await r.json();
+      return j.contents || '';
+    },
+    async u => {
+      const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`, { signal: AbortSignal.timeout(10000) });
+      if (!r.ok) throw new Error('bad status');
+      return r.text();
+    },
+    async u => {
+      const r = await fetch(`https://thingproxy.freeboard.io/fetch/${encodeURIComponent(u)}`, { signal: AbortSignal.timeout(10000) });
+      if (!r.ok) throw new Error('bad status');
+      return r.text();
+    },
   ];
-  for (const makeUrl of proxies) {
+  for (const proxy of proxies) {
     try {
-      const resp = await fetch(makeUrl(url), { signal: AbortSignal.timeout(10000) });
-      if (!resp.ok) continue;
-      const ct = resp.headers.get('content-type') || '';
-      let text;
-      if (ct.includes('application/json') || makeUrl === proxies[1]) {
-        const j = await resp.json();
-        text = j.contents || j;
-      } else {
-        text = await resp.text();
+      const text = await proxy(url);
+      if (typeof text === 'string' && (text.includes('<rss') || text.includes('<feed') || text.includes('<channel'))) {
+        return text;
       }
-      if (typeof text !== 'string') text = JSON.stringify(text);
-      if (text.includes('<rss') || text.includes('<feed')) return text;
     } catch {}
   }
-  throw new Error('Не удалось загрузить RSS — все прокси недоступны');
+  throw new Error(`Не удалось загрузить RSS для ${url}`);
 }
 
 async function fetchRSSWithFallback(src) {
+  // Если источник помечен useProxy — сначала пробуем через PHP прокси
+  if (src.useProxy) {
+    try {
+      const resp = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'fetch_rss', rss_url: src.rssUrls[0] })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.rss && (data.rss.includes('<rss') || data.rss.includes('<feed') || data.rss.includes('<channel'))) {
+          return data.rss;
+        }
+      }
+    } catch {}
+  }
+  // Обычные CORS-прокси
   for (const url of src.rssUrls) {
     try { return await fetchRSS(url); } catch {}
   }
