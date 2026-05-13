@@ -463,13 +463,14 @@ RSS-лента (${src.name}):
 ${feedText}
 
 Верни ВСЕ записи как есть (до 40 штук), без фильтрации. Переведи заголовки и описания на русский.
+ВАЖНО: в строках JSON не используй символ двойной кавычки " — заменяй на «» или убирай.
 
 Верни ТОЛЬКО JSON-массив без лишнего текста:
 [
   {
     "title_en": "оригинальный заголовок",
     "title_ru": "Русский перевод заголовка",
-    "desc_ru": "1–2 предложения о теме на русском",
+    "desc_ru": "1-2 предложения о теме на русском без кавычек",
     "url": "https://...",
     "relevance": "high|medium|low",
     "game": "Модель устройства/игры или null"
@@ -482,13 +483,14 @@ RSS-лента (${src.name}):
 ${feedText}
 
 Верни ВСЕ записи (до 40 штук) без фильтрации. Переведи заголовки и описания на русский.
+ВАЖНО: в строках JSON не используй символ двойной кавычки " — заменяй на «» или убирай.
 
 Верни ТОЛЬКО JSON-массив без лишнего текста:
 [
   {
     "title_en": "оригинальный заголовок",
     "title_ru": "Русский перевод заголовка",
-    "desc_ru": "1–2 предложения: что за устройство и общее впечатление из описания",
+    "desc_ru": "1-2 предложения: что за устройство и общее впечатление без кавычек",
     "url": "https://...",
     "relevance": "high|medium|low",
     "game": "Название устройства или null"
@@ -519,10 +521,8 @@ ${feedText}
     setProgress(85, 'Парсю статьи...');
 
     const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
-    const match = text.match(/\[[\s\S]*\]/);
-    if (!match) throw new Error('Не удалось разобрать ответ. Попробуй ещё раз.');
-
-    const parsed = JSON.parse(match[0]);
+    const parsed = parseClaudeJSON(text);
+    if (!parsed) throw new Error('Не удалось разобрать ответ. Попробуй ещё раз.');
     allArticles[currentTab] = parsed.map((a, i) => ({ ...a, id: i + 1, source: currentTab }));
     allArticles[currentTab].forEach(a => { allDecisions[currentTab][a.id] = 'pending'; });
 
@@ -754,6 +754,30 @@ async function writeArticle(key, article) {
   if (!text) throw new Error('Пустой ответ от API');
 
   return { text, images };
+}
+
+/* ---- JSON PARSER (устойчивый) ---- */
+function parseClaudeJSON(text) {
+  const match = text.match(/\[[\s\S]*\]/);
+  if (!match) return null;
+  let s = match[0];
+  // Попытка 1: прямой парсинг
+  try { return JSON.parse(s); } catch {}
+  // Попытка 2: убираем управляющие символы и trailing commas
+  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+       .replace(/,\s*([\]}])/g, '$1');
+  try { return JSON.parse(s); } catch {}
+  // Попытка 3: построчная сборка — пропускаем строки с ошибками
+  try {
+    const objs = [];
+    const objRegex = /\{[^{}]*\}/gs;
+    let m;
+    while ((m = objRegex.exec(s)) !== null) {
+      try { objs.push(JSON.parse(m[0])); } catch {}
+    }
+    if (objs.length) return objs;
+  } catch {}
+  return null;
 }
 
 /* ---- CLAUDE API ---- */
