@@ -139,6 +139,12 @@
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  /* Category switcher */
+  .cat-switcher { display: flex; gap: 6px; margin-bottom: 20px; }
+  .cat-btn { background: var(--surface); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 8px 16px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
+  .cat-btn:hover { border-color: var(--border2); color: var(--text); }
+  .cat-btn.active { background: var(--surface2); border-color: var(--accent); color: var(--text); }
+  .cat-btn .cat-icon { font-size: 15px; }
 </style>
 </head>
 <body>
@@ -182,16 +188,15 @@
     <div id="scoutView">
       <div class="main-title">News Scout</div>
       <div class="main-sub" id="mainSub">Введи Claude API ключ слева и нажми «Загрузить новости»</div>
-      <div class="tabs">
-        <button class="tab-btn active" id="tab-pcgamer" onclick="switchTab('pcgamer',this)">
-          <span class="tab-dot" id="dot-pcgamer"></span>PC Gamer
-          <span class="tab-badge" id="badge-pcgamer">—</span>
+      <div class="cat-switcher">
+        <button class="cat-btn active" id="cat-gaming" onclick="switchCategory('gaming',this)">
+          <span class="cat-icon">🎮</span>Игровые новости
         </button>
-        <button class="tab-btn" id="tab-insider" onclick="switchTab('insider',this)">
-          <span class="tab-dot" id="dot-insider"></span>Insider Gaming
-          <span class="tab-badge" id="badge-insider">—</span>
+        <button class="cat-btn" id="cat-hardware" onclick="switchCategory('hardware',this)">
+          <span class="cat-icon">🖥</span>Железо и софт
         </button>
       </div>
+      <div class="tabs" id="tabsRow"></div>
       <div class="progress-wrap" id="progressWrap">
         <div class="progress-label"><span id="progressLabel">Загружаю...</span><span id="progressPct">0%</span></div>
         <div class="progress-bar"><div class="progress-inner" id="progressInner"></div></div>
@@ -225,9 +230,10 @@
 const PROXY_URL = 'https://akari42.tw1.ru/test/proxy.php';
 
 const SOURCES = {
+  // --- Игровые новости ---
   pcgamer: {
     id: 'pcgamer', name: 'PC Gamer', domain: 'pcgamer.com',
-    useProxy: true,
+    category: 'gaming', useProxy: true,
     rssUrls: [
       'https://www.pcgamer.com/rss/news/',
       'https://www.pcgamer.com/rss/',
@@ -236,13 +242,30 @@ const SOURCES = {
   },
   insider: {
     id: 'insider', name: 'Insider Gaming', domain: 'insider-gaming.com',
-    useProxy: false,
+    category: 'gaming', useProxy: false,
     rssUrls: ['https://insider-gaming.com/feed/', 'https://insider-gaming.com/rss/']
-  }
+  },
+  // --- Железо и софт ---
+  videocardz: {
+    id: 'videocardz', name: 'Videocardz', domain: 'videocardz.com',
+    category: 'hardware', useProxy: true,
+    rssUrls: [
+      'https://videocardz.com/newz/?feed=rss2',
+      'https://videocardz.com/?feed=rss2',
+      'https://videocardz.com/feed/',
+      'https://news.google.com/rss/search?q=site:videocardz.com&hl=en-US&gl=US&ceid=US:en'
+    ]
+  },
+  techtesters: {
+    id: 'techtesters', name: 'TechTesters', domain: 'techtesters.eu',
+    category: 'hardware', useProxy: true,
+    rssUrls: ['https://www.techtesters.eu/feed/', 'https://www.techtesters.eu/rss/']
+  },
 };
 
-let allArticles = { pcgamer: [], insider: [] };
-let allDecisions = { pcgamer: {}, insider: {} };
+let allArticles = Object.fromEntries(Object.keys(SOURCES).map(k => [k, []]));
+let allDecisions = Object.fromEntries(Object.keys(SOURCES).map(k => [k, {}]));
+let currentCategory = 'gaming';
 let currentTab = 'pcgamer';
 let currentFilter = 'all';
 let writtenTexts = {};
@@ -250,6 +273,37 @@ let writtenTexts = {};
 const savedKey = localStorage.getItem('pcg_api_key') || '';
 document.getElementById('apiKey').value = savedKey;
 if (savedKey) { setApiStatus(true); document.getElementById('loadBtn').disabled = false; }
+
+/* ---- CATEGORY SWITCHER ---- */
+function renderTabs() {
+  const row = document.getElementById('tabsRow');
+  const catSources = Object.values(SOURCES).filter(s => s.category === currentCategory);
+  if (!catSources.find(s => s.id === currentTab)) {
+    currentTab = catSources[0].id;
+  }
+  row.innerHTML = catSources.map(src => `
+    <button class="tab-btn ${src.id === currentTab ? 'active' : ''} ${allArticles[src.id].length ? 'loaded' : ''}"
+      id="tab-${src.id}" onclick="switchTab('${src.id}',this)">
+      <span class="tab-dot" id="dot-${src.id}"></span>${src.name}
+      <span class="tab-badge" id="badge-${src.id}">${allArticles[src.id].length || '—'}</span>
+    </button>`).join('');
+}
+
+function switchCategory(cat, btn) {
+  currentCategory = cat;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentFilter = 'all';
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.filter-btn').classList.add('active');
+  renderTabs();
+  const has = allArticles[currentTab].length > 0;
+  document.getElementById('statsGrid').style.display = has ? 'grid' : 'none';
+  document.getElementById('filterList').style.display = has ? 'flex' : 'none';
+  renderArticles(); updateStats(); updateLoadBtn();
+}
+
+renderTabs();
 
 /* ---- SETTINGS ---- */
 function saveSettings() {
@@ -277,6 +331,14 @@ function switchTab(tabId, btn) {
   document.getElementById('statsGrid').style.display = has ? 'grid' : 'none';
   document.getElementById('filterList').style.display = has ? 'flex' : 'none';
   renderArticles(); updateStats(); updateLoadBtn();
+}
+function updateTabBadge(tabId, count) {
+  const el = document.getElementById('badge-' + tabId);
+  if (el) el.textContent = count === null ? '—' : count;
+  if (count !== null && allArticles[tabId].length) {
+    const tab = document.getElementById('tab-' + tabId);
+    if (tab) tab.classList.add('loaded');
+  }
 }
 function updateLoadBtn() {
   const src = SOURCES[currentTab];
@@ -347,7 +409,7 @@ async function fetchRSSWithFallback(src) {
 function parseRSS(xml) {
   const doc = new DOMParser().parseFromString(xml, 'text/xml');
   const items = [...doc.querySelectorAll('item, entry')];
-  return items.slice(0, 30).map(item => ({
+  return items.slice(0, 40).map(item => ({
     title: item.querySelector('title')?.textContent?.trim() || '',
     link:  item.querySelector('link')?.textContent?.trim() || item.querySelector('link')?.getAttribute('href') || '',
     desc:  (item.querySelector('description, summary')?.textContent || '').replace(/<[^>]+>/g, '').slice(0, 300)
@@ -387,12 +449,19 @@ async function startLoad() {
       `${i+1}. [${it.title}](${it.link})\n${it.desc}`
     ).join('\n\n');
 
-    const prompt = `Ты — игровой редактор. Проанализируй RSS-ленту игровых новостей и выбери 8–12 самых интересных статей.
+    const isHardware = src.category === 'hardware';
+    const filterInstruction = isHardware
+      ? 'Выбери до 20 самых интересных статей про видеокарты, процессоры, оперативную память, SSD, мониторы, блоки питания, драйверы, апдейты Windows и другое железо/ПО. Исключай новости не по теме.'
+      : 'Выбери до 20 самых интересных статей про игры (новые анонсы, обновления, релизы, геймплей). Исключай статьи про железо, периферию, мониторы.';
+
+    const prompt = `Ты — редактор новостного сайта. Проанализируй RSS-ленту и выбери нужные статьи.
 
 RSS-лента (${src.name}):
 ${feedText}
 
-Верни ТОЛЬКО JSON-массив без лишнего текста:
+Задача: ${filterInstruction}
+
+Верни ТОЛЬКО JSON-массив без лишнего текста (до 20 статей):
 [
   {
     "title_en": "...",
@@ -400,7 +469,7 @@ ${feedText}
     "desc_ru": "1–2 предложения о теме на русском",
     "url": "https://...",
     "relevance": "high|medium|low",
-    "game": "Название игры или null"
+    "game": "${isHardware ? 'Модель устройства или null' : 'Название игры или null'}"
   }
 ]`;
 
@@ -536,7 +605,44 @@ async function writeArticle(key, article) {
   } catch {}
 
   // Шаг 2: рерайт через Claude напрямую
-  const prompt = `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
+  const srcCategory = SOURCES[article.source]?.category || 'gaming';
+  const prompt = srcCategory === 'hardware' ? `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
+
+НОВОСТЬ ДЛЯ ОБРАБОТКИ:
+Заголовок: ${article.title_en || article.title_ru}
+Описание: ${article.desc_ru || ''}
+Источник: ${article.url}
+
+КАТАЛОГ ПК МАГАЗИНА (используй для рекомендаций в конце):
+Линейка ОКСИГЕН (игровые ПК с подсветкой):
+- Оксиген III — Full HD-гейминг без переплат
+- Оксиген V — Баланс мощности и цены для Full HD и начального 2K
+- Оксиген V+ — Мощный ПК для 2K-гейминга без переплат
+- Оксиген VII — Ультимативное решение для 2K и комфортного 4K
+- Оксиген IX — Безграничные возможности для истинных энтузиастов (топ 4K)
+
+Линейка КВАРЦ (настольные ПК, элегантный дизайн):
+- Кварц III — Настольный игровой ПК для Full HD
+- Кварц V — Баланс красоты и мощности для Full HD и начального 2K
+- Кварц V+ — Красивый и мощный ПК для 2K-гейминга
+- Кварц VII — Ультимативно-роскошное решение для 2K и комфортного 4K
+- Кварц IX — Безграничные возможности для энтузиастов в кристальном исполнении (топ 4K)
+
+СТРУКТУРА СТАТЬИ:
+1. Вступительный абзац — цепляющее начало, суть новости в 2-3 предложениях
+2. ## Краткое содержание — маркированный список 3-5 ключевых фактов
+3. Несколько разделов ## с техническим разбором (характеристики, что это значит для пользователя, сравнение с конкурентами)
+4. Финальный абзац — объясни какой ПК из каталога выиграет от этого железа/обновления и рекомендуй конкретные модели
+
+ТРЕБОВАНИЯ:
+- Длина: 600–900 слов
+- Обращение на "ты"
+- Объясняй технические вещи простым языком
+- Формат: Markdown
+- Не упоминай сайт-источник
+
+Верни ТОЛЬКО текст статьи в Markdown.`
+  : `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
 
 НОВОСТЬ ДЛЯ ОБРАБОТКИ:
 Заголовок: ${article.title_en || article.title_ru}
@@ -574,7 +680,7 @@ async function writeArticle(key, article) {
 
 Верни ТОЛЬКО текст статьи в Markdown.`;
 
-  const data = await callClaude(key, prompt);
+  const data = await callClaude(key, prompt);  // prompt закрыт выше (тернарный оператор)
   const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
   if (!text) throw new Error('Пустой ответ от API');
 
@@ -651,9 +757,6 @@ function toggleWiBody(i) {
   const btn = document.querySelector(`#wia-${i} .toggle-btn`);
   body.classList.toggle('open');
   if (btn) btn.textContent = body.classList.contains('open') ? '▲' : '▼';
-}
-function updateTabBadge(tabId, count) {
-  document.getElementById('badge-' + tabId).textContent = count === null ? '—' : count;
 }
 function setProgress(pct, label) {
   document.getElementById('progressInner').style.width = pct + '%';
