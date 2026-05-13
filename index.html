@@ -195,6 +195,9 @@
         <button class="cat-btn" id="cat-hardware" onclick="switchCategory('hardware',this)">
           <span class="cat-icon">🖥</span>Железо и софт
         </button>
+        <button class="cat-btn" id="cat-reviews" onclick="switchCategory('reviews',this)">
+          <span class="cat-icon">⭐</span>Обзоры
+        </button>
       </div>
       <div class="tabs" id="tabsRow"></div>
       <div class="progress-wrap" id="progressWrap">
@@ -260,6 +263,12 @@ const SOURCES = {
     id: 'techtesters', name: 'TechTesters', domain: 'techtesters.eu',
     category: 'hardware', useProxy: true,
     rssUrls: ['https://www.techtesters.eu/feed/', 'https://www.techtesters.eu/rss/']
+  },
+  // --- Обзоры ---
+  techtesters_reviews: {
+    id: 'techtesters_reviews', name: 'TechTesters Обзоры', domain: 'techtesters.eu',
+    category: 'reviews', useProxy: false,
+    rssUrls: ['https://www.techtesters.eu/category/z-review/feed/']
   },
 };
 
@@ -450,6 +459,7 @@ async function startLoad() {
     ).join('\n\n');
 
     const isHardware = src.category === 'hardware';
+    const isReviews = src.category === 'reviews';
 
     const prompt = isHardware
       ? `Ты — редактор новостного сайта. Переведи и оформи все записи из RSS-ленты.
@@ -468,6 +478,25 @@ ${feedText}
     "url": "https://...",
     "relevance": "high|medium|low",
     "game": "Модель устройства/игры или null"
+  }
+]`
+      : isReviews
+      ? `Ты — редактор новостного сайта. Переведи и оформи все обзоры из RSS-ленты.
+
+RSS-лента (${src.name}):
+${feedText}
+
+Верни ВСЕ записи (до 40 штук) без фильтрации. Переведи заголовки и описания на русский.
+
+Верни ТОЛЬКО JSON-массив без лишнего текста:
+[
+  {
+    "title_en": "оригинальный заголовок",
+    "title_ru": "Русский перевод заголовка",
+    "desc_ru": "1–2 предложения: что за устройство и общее впечатление из описания",
+    "url": "https://...",
+    "relevance": "high|medium|low",
+    "game": "Название устройства или null"
   }
 ]`
       : `Ты — редактор новостного сайта. Проанализируй RSS-ленту и выбери нужные статьи.
@@ -622,7 +651,35 @@ async function writeArticle(key, article) {
 
   // Шаг 2: рерайт через Claude напрямую
   const srcCategory = SOURCES[article.source]?.category || 'gaming';
-  const prompt = srcCategory === 'hardware' ? `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
+  const prompt = srcCategory === 'reviews' ? `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
+
+ОБЗОР ДЛЯ ОБРАБОТКИ:
+Заголовок: ${article.title_en || article.title_ru}
+Описание: ${article.desc_ru || ''}
+Источник: ${article.url}
+
+КАТАЛОГ ПК МАГАЗИНА (для рекомендаций в конце, если уместно):
+- Оксиген III / Кварц III — Full HD
+- Оксиген V / Кварц V — Full HD + начало 2K
+- Оксиген V+ / Кварц V+ — 2K
+- Оксиген VII / Кварц VII — 2K + комфортный 4K
+- Оксиген IX / Кварц IX — топ 4K для энтузиастов
+
+СТРУКТУРА СТАТЬИ:
+1. Вступительный абзац — о чём обзор и почему это интересно
+2. ## Краткое содержание — маркированный список 3-5 ключевых фактов об устройстве
+3. Разделы ## с разбором: характеристики, дизайн, производительность, выводы
+4. Финальный абзац — итоговая оценка и, если уместно, рекомендация ПК из каталога
+
+ТРЕБОВАНИЯ:
+- Длина: 600–900 слов
+- Обращение на "ты", живой язык
+- Объясняй технические термины простыми словами
+- Формат: Markdown
+- Не упоминай сайт-источник
+
+Верни ТОЛЬКО текст статьи в Markdown.`
+  : srcCategory === 'hardware' ? `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
 
 НОВОСТЬ ДЛЯ ОБРАБОТКИ:
 Заголовок: ${article.title_en || article.title_ru}
