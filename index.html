@@ -198,6 +198,9 @@
         <button class="cat-btn" id="cat-reviews" onclick="switchCategory('reviews',this)">
           <span class="cat-icon">⭐</span>Обзоры
         </button>
+        <button class="cat-btn" id="cat-features" onclick="switchCategory('features',this)">
+          <span class="cat-icon">✦</span>Фичи и гайды
+        </button>
       </div>
       <div class="tabs" id="tabsRow"></div>
       <div class="progress-wrap" id="progressWrap">
@@ -264,6 +267,22 @@ const SOURCES = {
     id: 'techtesters_reviews', name: 'TechTesters Обзоры', domain: 'techtesters.eu',
     category: 'reviews', useProxy: false,
     rssUrls: ['https://www.techtesters.eu/category/z-review/feed/']
+  },
+  // --- Фичи и гайды ---
+  kotaku: {
+    id: 'kotaku', name: 'Kotaku', domain: 'kotaku.com',
+    category: 'features', useProxy: false,
+    rssUrls: ['https://kotaku.com/feed/rss']
+  },
+  arstechnica: {
+    id: 'arstechnica', name: 'Ars Technica', domain: 'arstechnica.com',
+    category: 'features', useProxy: false,
+    rssUrls: ['https://feeds.arstechnica.com/arstechnica/gaming']
+  },
+  screenrant: {
+    id: 'screenrant', name: 'Screen Rant', domain: 'screenrant.com',
+    category: 'features', useProxy: false,
+    rssUrls: ['https://screenrant.com/feed/']
   },
 };
 
@@ -455,6 +474,7 @@ async function startLoad() {
 
     const isHardware = src.category === 'hardware';
     const isReviews = src.category === 'reviews';
+    const isFeatures = src.category === 'features';
 
     const prompt = isHardware
       ? `Ты — редактор новостного сайта. Переведи и оформи все записи из RSS-ленты.
@@ -496,6 +516,26 @@ ${feedText}
     "game": "Название устройства или null"
   }
 ]`
+      : isFeatures
+      ? `Ты — редактор новостного сайта. Проанализируй RSS-ленту и выбери интересные материалы.
+
+RSS-лента (${src.name}):
+${feedText}
+
+Задача: выбери до 20 самых интересных фичей, гайдов, списков, сравнений и аналитических материалов. Это могут быть: топ-листы, разборы технологий, истории об актёрах в играх, сравнения железа, гайды по сборке ПК, интересные факты. Исключай обычные новости-однодневки (анонсы, патчи без контекста).
+ВАЖНО: в строках JSON не используй символ двойной кавычки " — заменяй на «» или убирай.
+
+Верни ТОЛЬКО JSON-массив без лишнего текста:
+[
+  {
+    "title_en": "...",
+    "title_ru": "Русский заголовок",
+    "desc_ru": "1-2 предложения о теме без кавычек",
+    "url": "https://...",
+    "relevance": "high|medium|low",
+    "game": "Название игры или устройства или null"
+  }
+]`
       : `Ты — редактор новостного сайта. Проанализируй RSS-ленту и выбери нужные статьи.
 
 RSS-лента (${src.name}):
@@ -515,7 +555,7 @@ ${feedText}
   }
 ]`;
 
-    const maxTok = (isHardware || isReviews) ? 8192 : 4096;
+    const maxTok = (isHardware || isReviews || isFeatures) ? 8192 : 4096;
     const data = await callClaude(key, prompt, null, maxTok);
     log('✓ Ответ получен', 'ok');
     setProgress(85, 'Парсю статьи...');
@@ -647,7 +687,34 @@ async function writeArticle(key, article) {
 
   // Шаг 2: рерайт через Claude напрямую
   const srcCategory = SOURCES[article.source]?.category || 'gaming';
-  const prompt = srcCategory === 'reviews' ? `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
+  const prompt = srcCategory === 'features' ? `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
+
+МАТЕРИАЛ ДЛЯ ОБРАБОТКИ:
+Заголовок: ${article.title_en || article.title_ru}
+Описание: ${article.desc_ru || ''}
+Источник: ${article.url}
+
+КАТАЛОГ ПК МАГАЗИНА (для рекомендаций в конце, если уместно):
+- Оксиген III / Кварц III — Full HD
+- Оксиген V / Кварц V — Full HD + начало 2K
+- Оксиген V+ / Кварц V+ — 2K
+- Оксиген VII / Кварц VII — 2K + комфортный 4K
+- Оксиген IX / Кварц IX — топ 4K для энтузиастов
+
+СТРУКТУРА СТАТЬИ:
+1. Вступительный абзац — цепляющее начало, о чём материал
+2. ## Краткое содержание — маркированный список 3-5 ключевых тезисов
+3. Основная часть — разверни тему в нескольких разделах ## (список, сравнение, разбор — в зависимости от темы)
+4. Финальный абзац — вывод и при уместности рекомендация ПК из каталога
+
+ТРЕБОВАНИЯ:
+- Длина: 600–900 слов
+- Обращение на "ты", живой увлекательный язык
+- Формат: Markdown
+- Не упоминай сайт-источник
+
+Верни ТОЛЬКО текст статьи в Markdown.`
+  : srcCategory === 'reviews' ? `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
 
 ОБЗОР ДЛЯ ОБРАБОТКИ:
 Заголовок: ${article.title_en || article.title_ru}
