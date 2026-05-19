@@ -183,11 +183,6 @@
   .cta-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
   .cta-select { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; color: var(--text); font-size: 12px; outline: none; cursor: pointer; min-width: 200px; }
   .cta-select:focus { border-color: var(--accent); }
-  .cta-lineups { display: none; flex-wrap: wrap; gap: 4px; align-items: center; width: 100%; padding-top: 4px; }
-  .cta-lineups.visible { display: flex; }
-  .cta-lineup-cb { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); cursor: pointer; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 3px 8px; }
-  .cta-lineup-cb input { accent-color: var(--accent); cursor: pointer; }
-  .cta-lineup-cb:has(input:checked) { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
   .cta-btn { background: none; border: 1px solid var(--accent); color: var(--accent); border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
   .cta-btn:hover { background: var(--accent); color: #000; }
   .cta-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -781,20 +776,13 @@ async function startWriting() {
         <button class="toggle-btn" onclick="toggleWiBody(${i})">▲</button>
         <div class="cta-panel">
           <span class="cta-label">Подводка:</span>
-          <select class="cta-select" id="cta-type-${i}" onchange="onCtaTypeChange(${i})">
+          <select class="cta-select" id="cta-type-${i}">
             <option value="">— Без подводки —</option>
-            <option value="availability">📦 Узнать о наличии товара</option>
-            <option value="gaming">🎮 ПК для комфортной игры</option>
+            <option value="gaming">🎮 Готовый ПК для игры</option>
+            <option value="upgrade">🔧 Обновить железо</option>
             <option value="subscribe">📢 Подписаться на Дзен</option>
           </select>
           <button class="cta-btn" id="cta-btn-${i}" onclick="addCta(${i},event)">+ Добавить</button>
-          <div class="cta-lineups" id="cta-lineups-${i}">
-            <span class="cta-label">Линейки:</span>
-            ${[
-              ['ox3','Оксиген III'],['ox5','Оксиген V'],['ox7','Оксиген VII'],['ox9','Оксиген IX'],
-              ['kv3','Кварц III'],['kv5','Кварц V'],['kv7','Кварц VII'],['kv9','Кварц IX']
-            ].map(([val,lbl]) => `<label class="cta-lineup-cb"><input type="checkbox" value="${val}" id="cta-lu-${i}-${val}"> ${lbl}</label>`).join('')}
-          </div>
         </div>`;
     } catch(e) {
       setWiStatus(i, 'error', '✗');
@@ -1295,22 +1283,19 @@ async function uploadImageToWP(imageUrl, wpUrl, credentials) {
 }
 
 /* ---- CTA (ПОДВОДКА) ---- */
-const LINEUP_NAMES = {
-  ox3: 'Оксиген III (Full HD, бюджетный)',
-  ox5: 'Оксиген V (Full HD / начало 2K)',
-  ox7: 'Оксиген VII (2K / начало 4K)',
-  ox9: 'Оксиген IX (топ 4K, флагман)',
-  kv3: 'Кварц III (элегантный дизайн, Full HD)',
-  kv5: 'Кварц V (элегантный, Full HD / 2K)',
-  kv7: 'Кварц VII (элегантный, 2K / 4K)',
-  kv9: 'Кварц IX (элегантный флагман, 4K)',
-};
+const PC_LINEUPS = `Линейка ОКСИГЕН (игровые ПК с подсветкой):
+- Оксиген III — Full HD-гейминг без переплат (бюджетный)
+- Оксиген V — баланс цены и мощности для Full HD и начала 2K
+- Оксиген V+ — уверенный 2K-гейминг без переплат
+- Оксиген VII — ультимативный 2K и комфортный 4K
+- Оксиген IX — флагман для топового 4K
 
-function onCtaTypeChange(idx) {
-  const type = document.getElementById(`cta-type-${idx}`).value;
-  const lineupsEl = document.getElementById(`cta-lineups-${idx}`);
-  lineupsEl.classList.toggle('visible', type === 'gaming');
-}
+Линейка КВАРЦ (настольные игровые ПК, элегантный дизайн):
+- Кварц III — красивый ПК для Full HD
+- Кварц V — элегантность + мощность для Full HD и 2K
+- Кварц V+ — стильный 2K-гейминг
+- Кварц VII — роскошный 2K / комфортный 4K
+- Кварц IX — элегантный флагман для 4K`;
 
 async function addCta(idx, e) {
   e.stopPropagation();
@@ -1327,52 +1312,56 @@ async function addCta(idx, e) {
   btn.textContent = '↻ Пишу...';
 
   try {
-    const articleSnippet = stored.text.slice(0, 800);
+    const articleSnippet = stored.text.slice(0, 900);
     let prompt = '';
 
-    if (type === 'availability') {
+    if (type === 'gaming') {
       prompt = `Ты — копирайтер магазина игровых ПК "КометаПК" (сайт: https://kometapc.ru/).
-Тебе дан отрывок статьи о технике (процессоре, видеокарте, геймпаде, наушниках или другом устройстве):
 
+Вот отрывок статьи об игре:
 ---
 ${articleSnippet}
 ---
 
-Напиши финальный абзац-подводку (3-4 предложения) для этой статьи в стиле:
-- Напоминаем, что найти данную технику и уточнить наличие можно у наших менеджеров
-- Призыв написать менеджерам для уточнения наличия и цены
-- Ссылка на сайт: https://kometapc.ru/
-Пиши живо и дружелюбно, на русском языке. Верни ТОЛЬКО текст абзаца, без markdown заголовков.`;
+Вот наш каталог ПК:
+${PC_LINEUPS}
 
-    } else if (type === 'gaming') {
-      const checked = [...document.querySelectorAll(`#cta-lineups-${idx} input:checked`)].map(cb => LINEUP_NAMES[cb.value] || cb.value);
-      const lineupsStr = checked.length ? checked.join(', ') : 'Оксиген V, Кварц V';
+Задача: напиши финальный абзац-подводку (3-4 предложения).
+- Исходя из контекста статьи (жанр игры, упомянутые системные требования или графика), самостоятельно выбери одну-две подходящие линейки из каталога
+- Естественно впиши название линейки(ок) в текст — объясни почему именно она подойдёт для этой игры (FPS, разрешение, жанр)
+- Предложи зайти на kometapc.ru чтобы ознакомиться и проконсультироваться с менеджерами
+- Пиши живо, по-человечески, без рекламного пафоса
+Верни ТОЛЬКО текст абзаца, без заголовков и markdown.`;
+
+    } else if (type === 'upgrade') {
       prompt = `Ты — копирайтер магазина игровых ПК "КометаПК" (сайт: https://kometapc.ru/).
-Тебе дан отрывок статьи об игре или игровом событии:
 
+Вот отрывок статьи о железе (процессор, видеокарта, память, и т.п.):
 ---
 ${articleSnippet}
 ---
 
-Напиши финальный абзац-подводку (3-4 предложения):
-- Расскажи, что для комфортной игры в эту игру идеально подойдут следующие линейки: ${lineupsStr}
-- Кратко объясни почему (мощность, разрешение, стабильный FPS)
-- Призови написать менеджерам для подбора конфигурации по лучшей цене
-- Упомяни ссылку: https://kometapc.ru/
-Пиши живо, без занудства. Верни ТОЛЬКО текст абзаца, без markdown заголовков.`;
+Вот наш каталог ПК:
+${PC_LINEUPS}
+
+Задача: напиши финальный абзац-подводку (3-4 предложения).
+- Если в статье речь о новом железе — предложи уточнить наличие у менеджеров
+- Если апгрейд нецелесообразен или дорог — подскажи что иногда выгоднее взять готовый ПК из каталога, выбери подходящую линейку
+- Органично упомяни сайт kometapc.ru
+- Пиши дружелюбно и по делу
+Верни ТОЛЬКО текст абзаца, без заголовков и markdown.`;
 
     } else if (type === 'subscribe') {
       prompt = `Ты — копирайтер магазина игровых ПК "КометаПК".
-Тебе дан отрывок статьи:
 
+Вот отрывок статьи:
 ---
 ${articleSnippet}
 ---
 
-Напиши короткий финальный абзац (2-3 предложения):
-- Призыв подписаться на наш канал в Яндекс Дзен чтобы быть в курсе всех новостей мира игр и железа
-- Пиши тепло и дружелюбно
-Верни ТОЛЬКО текст абзаца, без markdown заголовков.`;
+Напиши короткий финальный абзац (2-3 предложения) с призывом подписаться на канал в Яндекс Дзен — чтобы читатель всегда был в курсе игровых новостей и обзоров.
+Пиши тепло, без пафоса.
+Верни ТОЛЬКО текст абзаца, без заголовков и markdown.`;
     }
 
     const result = await callClaude(key, prompt, null, 512);
