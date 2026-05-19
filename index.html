@@ -565,15 +565,15 @@ async function startLoad() {
     log(`✓ ${items.length} записей в RSS`);
     setProgress(45, 'Отправляю в Claude...');
 
+    const isHardware = src.category === 'hardware';
+    const isReviews = src.category === 'reviews';
+    const isFeatures = src.category === 'features';
+
     // Для gaming берём 20 записей (просим 20), для остальных — все 40
     const feedItems = (!isHardware && !isReviews && !isFeatures) ? items.slice(0, 20) : items;
     const feedText = feedItems.map((it, i) =>
       `${i+1}. [${it.title}](${it.link})\n${it.desc}`
     ).join('\n\n');
-
-    const isHardware = src.category === 'hardware';
-    const isReviews = src.category === 'reviews';
-    const isFeatures = src.category === 'features';
 
     const prompt = isHardware
       ? `Ты — редактор новостного сайта. Переведи и оформи все записи из RSS-ленты.
