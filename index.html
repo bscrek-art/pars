@@ -693,6 +693,7 @@ async function startWriting() {
   for (let i = 0; i < selected.length; i++) {
     const a = selected[i];
     setWiStatus(i, 'processing', '↻');
+    imgSelections[i] = { cover: null, inText: new Map() };
     document.getElementById('writeSubtitle').textContent =
       `Пишу ${i + 1} из ${selected.length}: ${a.title_ru || a.title_en}`;
     try {
@@ -1315,6 +1316,7 @@ async function rewriteFull(idx, e) {
   btn.disabled = true;
   btn.textContent = '↻ Перевожу...';
   setWiStatus(idx, 'processing', '↻');
+  imgSelections[idx] = { cover: null, inText: new Map() };
 
   try {
     const prompt = `Ты — профессиональный переводчик и редактор для Яндекс Дзен, работаешь для магазина игровых ПК.
