@@ -129,7 +129,20 @@
   .full-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .wi-body { display: none; border-top: 1px solid var(--border); padding: 20px; }
   .wi-body.open { display: block; }
-  .wi-text { font-size: 13px; line-height: 1.75; color: #c0c0cc; white-space: pre-wrap; font-family: 'Inter', sans-serif; }
+  .wi-text { font-size: 13px; line-height: 1.75; color: #c0c0cc; font-family: 'Inter', sans-serif; }
+  .wi-text p, .wi-text h2, .wi-text h3, .wi-text h1 { margin-bottom: 10px; }
+  .wi-text h1 { font-size: 16px; font-weight: 700; color: var(--text); }
+  .wi-text h2 { font-size: 14px; font-weight: 600; color: var(--text); }
+  .wi-text h3 { font-size: 13px; font-weight: 600; color: var(--text); }
+  .wi-text ul, .wi-text ol { padding-left: 20px; margin-bottom: 10px; }
+  .wi-text li { margin-bottom: 4px; }
+  .wi-text [data-para]::before { content: attr(data-para); display: inline-block; min-width: 18px; height: 18px; line-height: 18px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; font-size: 9px; color: var(--muted); text-align: center; margin-right: 6px; vertical-align: middle; flex-shrink: 0; font-family: monospace; }
+  /* Image position input */
+  .img-pos-row { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+  .img-pos-label { font-size: 10px; color: var(--muted); white-space: nowrap; }
+  .img-pos-input { width: 46px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; color: var(--text); font-size: 11px; text-align: center; outline: none; }
+  .img-pos-input:focus { border-color: var(--accent); }
+  .img-pos-input.has-value { border-color: var(--accent); color: var(--accent); }
   .wi-error-msg { font-size: 13px; color: var(--danger); padding: 16px 20px; border-top: 1px solid var(--border); }
   .write-copy-all { background: none; border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 10px 20px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
   .write-copy-all:hover { background: var(--accent); color: #000; }
@@ -695,15 +708,20 @@ async function startWriting() {
                 <div class="wi-img-copy" onclick="copyImgUrl('${esc(url)}',this)">⎘ URL</div>
               </div>
               <div class="img-sel-btns">
-                <button class="img-sel-btn" id="cover-btn-${i}-${ii}" onclick="selectCover(${i},${ii},'${esc(url)}',this)">📌 Обложка</button>
-                <button class="img-sel-btn" id="intext-btn-${i}-${ii}" onclick="toggleInText(${i},${ii},'${esc(url)}',this)">📎 В текст</button>
+                <button class="img-sel-btn" id="cover-btn-${i}-${ii}" onclick="selectCover(${i},'${esc(url)}',this)">📌 Обложка</button>
+              </div>
+              <div class="img-pos-row">
+                <span class="img-pos-label">После абз.:</span>
+                <input type="number" class="img-pos-input" min="0" max="999" placeholder="—"
+                  oninput="setImgPosition(${i},'${esc(url)}',this)" title="Вставить после абзаца №. 0 = в начало">
               </div>
               <button class="img-translate-btn" onclick="translateImage('${esc(url)}','img-tr-${i}-${ii}',this)">⬡ Перевести текст</button>
               <div class="img-translation" id="img-tr-${i}-${ii}"></div>
             </div>`).join('')}
           </div>`;
       }
-      body.innerHTML = imagesHtml + `<div style="padding:16px 20px 20px"><div class="wi-text">${esc(result.text)}</div></div>`;
+      const { html: articleHtml, count: paraCount } = renderArticleHtml(result.text);
+      body.innerHTML = imagesHtml + `<div style="padding:16px 20px 20px"><div class="wi-text" id="wi-text-${i}">${articleHtml}</div><div style="font-size:10px;color:var(--muted);margin-top:8px;">Абзацев в статье: ${paraCount}</div></div>`;
       body.classList.add('open');
       document.getElementById(`wia-${i}`).innerHTML = `
         <button class="copy-btn" onclick="copyOne(${i},event)">⎘ Копировать</button>
@@ -764,6 +782,7 @@ async function writeArticle(key, article) {
 4. Финальный абзац — вывод и при уместности рекомендация ПК из каталога
 
 ТРЕБОВАНИЯ:
+- Заголовок H1 — придумай сам, цепляющий, интригующий, не переводи дословно с оригинала
 - Длина: 600–900 слов
 - Обращение на "ты", живой увлекательный язык
 - Формат: Markdown
@@ -791,6 +810,7 @@ async function writeArticle(key, article) {
 4. Финальный абзац — итоговая оценка и, если уместно, рекомендация ПК из каталога
 
 ТРЕБОВАНИЯ:
+- Заголовок H1 — придумай сам, цепляющий, интригующий, не переводи дословно с оригинала
 - Длина: 600–900 слов
 - Обращение на "ты", живой язык
 - Объясняй технические термины простыми словами
@@ -827,6 +847,7 @@ async function writeArticle(key, article) {
 4. Финальный абзац — объясни какой ПК из каталога выиграет от этого железа/обновления и рекомендуй конкретные модели
 
 ТРЕБОВАНИЯ:
+- Заголовок H1 — придумай сам, цепляющий, интригующий, не переводи дословно с оригинала
 - Длина: 600–900 слов
 - Обращение на "ты"
 - Объясняй технические вещи простым языком
@@ -863,6 +884,7 @@ async function writeArticle(key, article) {
 4. Финальный абзац — органичная рекомендация купить подходящий ПК из каталога. Если в новости есть системные требования или упоминается разрешение/производительность — подбери конкретные модели. Если новость про игру без требований — порекомендуй универсально.
 
 ТРЕБОВАНИЯ К ТЕКСТУ:
+- Заголовок H1 — придумай сам, цепляющий, интригующий, не переводи дословно с оригинала
 - Длина: 600–900 слов
 - Обращение к читателю на "ты"
 - Живой, разговорный язык без канцелярщины
@@ -934,10 +956,11 @@ async function callClaude(key, prompt, tools, maxTokens = 4096) {
 }
 
 /* ---- IMAGE SELECTION FOR WP ---- */
-const imgSelections = {}; // { wiIdx: { cover: url|null, inText: Set<url> } }
+// imgSelections[wiIdx] = { cover: url|null, inText: Map<url, paragraphNumber> }
+const imgSelections = {};
 
 function getImgSel(wiIdx) {
-  if (!imgSelections[wiIdx]) imgSelections[wiIdx] = { cover: null, inText: new Set() };
+  if (!imgSelections[wiIdx]) imgSelections[wiIdx] = { cover: null, inText: new Map() };
   return imgSelections[wiIdx];
 }
 function selectCover(wiIdx, imgIdx, url, btn) {
@@ -946,21 +969,56 @@ function selectCover(wiIdx, imgIdx, url, btn) {
     sel.cover = null;
     btn.classList.remove('active-cover');
   } else {
-    // Снять предыдущую обложку
     document.querySelectorAll(`[id^="cover-btn-${wiIdx}-"]`).forEach(b => b.classList.remove('active-cover'));
     sel.cover = url;
     btn.classList.add('active-cover');
   }
 }
-function toggleInText(wiIdx, imgIdx, url, btn) {
+function setImgPosition(wiIdx, url, input) {
   const sel = getImgSel(wiIdx);
-  if (sel.inText.has(url)) {
+  const val = input.value.trim();
+  if (val === '' || isNaN(parseInt(val))) {
     sel.inText.delete(url);
-    btn.classList.remove('active-intext');
+    input.classList.remove('has-value');
   } else {
-    sel.inText.add(url);
-    btn.classList.add('active-intext');
+    sel.inText.set(url, parseInt(val));
+    input.classList.add('has-value');
   }
+}
+
+/* ---- ARTICLE RENDER WITH PARAGRAPH NUMBERS ---- */
+function renderArticleHtml(markdownText) {
+  if (typeof marked === 'undefined') return { html: esc(markdownText), count: 0 };
+  const raw = marked.parse(markdownText);
+  const div = document.createElement('div');
+  div.innerHTML = raw;
+  let num = 0;
+  div.querySelectorAll('p, h1, h2, h3').forEach(el => {
+    num++;
+    el.setAttribute('data-para', num);
+  });
+  return { html: div.innerHTML, count: num };
+}
+
+function insertImagesIntoHtml(html, inTextMap) {
+  if (!inTextMap.size) return html;
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  // Сортируем по убыванию позиции чтобы вставлять снизу вверх (индексы не смещаются)
+  const sorted = [...inTextMap.entries()].sort((a, b) => b[1] - a[1]);
+  for (const [url, afterPara] of sorted) {
+    const fig = document.createElement('figure');
+    fig.className = 'wp-block-image';
+    fig.innerHTML = `<img src="${url}" alt=""/>`;
+    if (afterPara <= 0) {
+      div.insertBefore(fig, div.firstChild);
+    } else {
+      const target = div.querySelector(`[data-para="${afterPara}"]`);
+      if (target) target.after(fig);
+      else div.appendChild(fig);
+    }
+  }
+  return div.innerHTML;
 }
 
 /* ---- WORDPRESS ---- */
@@ -1016,10 +1074,15 @@ async function publishToWordPress(idx, e) {
 
   const article = stored.article;
   const status  = document.getElementById('wpStatus').value;
-  const title   = article.title_ru || article.title_en || 'Без заголовка';
+
+  // Извлекаем H1 из текста статьи — он станет заголовком поста в WP и RSS
+  const h1Match = stored.text.match(/^#\s+(.+)/m);
+  const title = h1Match ? h1Match[1].trim() : (article.title_ru || article.title_en || 'Без заголовка');
+  // Убираем H1 из тела — WP сам выводит заголовок поста, дублировать не нужно
+  const textWithoutH1 = stored.text.replace(/^#\s+.+\n?/m, '').trimStart();
   const htmlContent = typeof marked !== 'undefined'
-    ? marked.parse(stored.text)
-    : stored.text.replace(/\n/g, '<br>');
+    ? marked.parse(textWithoutH1)
+    : textWithoutH1.replace(/\n/g, '<br>');
 
   btn.disabled = true;
   const credentials = btoa(`${wpUser}:${wpPass}`);
@@ -1033,29 +1096,27 @@ async function publishToWordPress(idx, e) {
       featuredMediaId = await uploadImageToWP(sel.cover, wpUrl, credentials);
     }
 
-    // 2. Загружаем картинки "В текст" на сервер и вставляем в статью
-    let finalHtml = typeof marked !== 'undefined' ? marked.parse(stored.text) : stored.text.replace(/\n/g, '<br>');
+    // 2. Загружаем картинки "В текст" на сервер и вставляем по позициям
+    const { html: baseHtml } = renderArticleHtml(stored.text);
+    let finalHtml = baseHtml;
     if (sel.inText.size > 0) {
-      const inTextUrls = [...sel.inText];
-      const uploadedUrls = [];
-      for (let j = 0; j < inTextUrls.length; j++) {
-        btn.textContent = `↻ Загружаю фото ${j + 1}/${inTextUrls.length}...`;
+      const inTextEntries = [...sel.inText.entries()];
+      const uploadedMap = new Map();
+      for (let j = 0; j < inTextEntries.length; j++) {
+        const [origUrl, paraNum] = inTextEntries[j];
+        btn.textContent = `↻ Загружаю фото ${j + 1}/${inTextEntries.length}...`;
         try {
-          const mediaId = await uploadImageToWP(inTextUrls[j], wpUrl, credentials);
-          // Получаем URL загруженного файла из WP
+          const mediaId = await uploadImageToWP(origUrl, wpUrl, credentials);
           const mediaResp = await fetch(`${wpUrl}/wp-json/wp/v2/media/${mediaId}`, {
             headers: { 'Authorization': `Basic ${credentials}` }
           });
           const mediaData = await mediaResp.json();
-          uploadedUrls.push(mediaData.source_url || inTextUrls[j]);
+          uploadedMap.set(mediaData.source_url || origUrl, paraNum);
         } catch {
-          uploadedUrls.push(inTextUrls[j]); // fallback — оставляем оригинал
+          uploadedMap.set(origUrl, paraNum); // fallback
         }
       }
-      const inTextHtml = uploadedUrls.map(url =>
-        `<figure class="wp-block-image"><img src="${url}" alt=""/></figure>`
-      ).join('\n');
-      finalHtml = inTextHtml + '\n' + finalHtml;
+      finalHtml = insertImagesIntoHtml(finalHtml, uploadedMap);
     }
 
     // 3. Создаём пост
@@ -1210,6 +1271,7 @@ URL оригинала: ${article.url}
 - Оксиген IX / Кварц IX — топ 4K для энтузиастов
 
 ТРЕБОВАНИЯ:
+- Заголовок H1 — придумай сам, цепляющий, не переводи дословно с оригинала
 - Переведи максимально полно, сохраняя все детали, цифры, цитаты и структуру оригинала
 - Обращение на "ты", живой русский язык без дословного калькирования
 - Формат: Markdown с заголовками
