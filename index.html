@@ -1379,7 +1379,13 @@ ${articleSnippet}
     }
 
     const result = await callClaude(key, prompt, null, 512);
-    const ctaText = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    let ctaText = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+
+    // Гарантируем что любое упоминание сайта — кликабельная ссылка
+    ctaText = ctaText
+      .replace(/\[([^\]]+)\]\(https?:\/\/kometapc\.ru[^\)]*\)/gi, '[Комета ПК](https://kometapc.ru/)')
+      .replace(/https?:\/\/kometapc\.ru\/?/gi, '[Комета ПК](https://kometapc.ru/)')
+      .replace(/\bkometapc\.ru\b/gi, '[Комета ПК](https://kometapc.ru/)');
 
     // Добавляем подводку к тексту статьи
     stored.text = stored.text.trimEnd() + '\n\n---\n\n' + ctaText;
