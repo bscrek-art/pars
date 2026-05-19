@@ -1174,7 +1174,12 @@ async function publishToWordPress(idx, e) {
     const sel = getImgSel(idx);
     if (sel.cover) {
       btn.textContent = '↻ Загружаю обложку...';
-      featuredMediaId = await uploadImageToWP(sel.cover, wpUrl, credentials);
+      try {
+        featuredMediaId = await uploadImageToWP(sel.cover, wpUrl, credentials);
+      } catch(imgErr) {
+        console.warn('Обложка не загружена:', imgErr.message);
+        // Продолжаем публикацию без обложки
+      }
     }
 
     // 2. Загружаем картинки "В текст" на сервер и вставляем по позициям
@@ -1249,13 +1254,20 @@ async function publishToWordPress(idx, e) {
 
 async function uploadImageToWP(imageUrl, wpUrl, credentials) {
   // Скачиваем картинку через PHP прокси (base64)
-  const proxyResp = await fetch(PROXY_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'fetch_image_b64', url: imageUrl })
-  });
-  const proxyData = await proxyResp.json();
-  if (proxyData.error) throw new Error('Не удалось скачать картинку: ' + proxyData.error);
+  let proxyData;
+  try {
+    const proxyResp = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'fetch_image_b64', url: imageUrl })
+    });
+    proxyData = await proxyResp.json();
+  } catch(e) {
+    throw new Error(`Прокси недоступен для картинки: ${imageUrl.slice(0, 80)}`);
+  }
+  if (proxyData.error || !proxyData.b64) {
+    throw new Error(`Не удалось скачать картинку (${proxyData.error || 'нет данных'}): ${imageUrl.slice(0, 80)}`);
+  }
 
   // Конвертируем base64 в blob
   const byteChars = atob(proxyData.b64);
