@@ -133,7 +133,8 @@
   .wi-error-msg { font-size: 13px; color: var(--danger); padding: 16px 20px; border-top: 1px solid var(--border); }
   .write-copy-all { background: none; border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 10px 20px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
   .write-copy-all:hover { background: var(--accent); color: #000; }
-  .wi-images { display: flex; gap: 8px; flex-wrap: wrap; padding: 16px 20px 0; }
+  .wi-images { display: flex; gap: 12px; flex-wrap: wrap; padding: 16px 20px 0; }
+  .wi-img-block { display: flex; flex-direction: column; gap: 4px; width: 120px; flex-shrink: 0; }
   .wi-img-wrap { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); flex-shrink: 0; }
   .wi-img-wrap img { width: 120px; height: 80px; object-fit: cover; display: block; cursor: pointer; transition: opacity 0.15s; }
   .wi-img-wrap img:hover { opacity: 0.8; }
@@ -144,6 +145,12 @@
   .img-translate-btn:hover { border-color: var(--accent); color: var(--accent); }
   .img-translate-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .img-translation { font-size: 12px; color: #c0c0cc; line-height: 1.65; margin-top: 6px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; display: none; white-space: pre-wrap; }
+  /* Image selection for WP */
+  .img-sel-btns { display: flex; gap: 4px; margin-top: 4px; }
+  .img-sel-btn { flex: 1; background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 4px 6px; font-size: 10px; cursor: pointer; transition: all 0.15s; text-align: center; }
+  .img-sel-btn:hover { border-color: var(--border2); color: var(--text); }
+  .img-sel-btn.active-cover { background: rgba(79,138,247,0.15); border-color: #4f8af7; color: #4f8af7; }
+  .img-sel-btn.active-intext { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
@@ -682,12 +689,18 @@ async function startWriting() {
       if (result.images && result.images.length) {
         imagesHtml = `<div class="wi-images-label">Изображения из оригинала</div>
           <div class="wi-images">${result.images.map((url, ii) => `
-            <div class="wi-img-wrap">
-              <img src="${esc(url)}" alt="img" onerror="this.parentElement.style.display='none'" onclick="window.open('${esc(url)}','_blank')">
-              <div class="wi-img-copy" onclick="copyImgUrl('${esc(url)}',this)">⎘ URL</div>
-            </div>
-            <button class="img-translate-btn" onclick="translateImage('${esc(url)}','img-tr-${i}-${ii}',this)">⬡ Перевести текст</button>
-            <div class="img-translation" id="img-tr-${i}-${ii}"></div>`).join('')}
+            <div class="wi-img-block" id="imgblock-${i}-${ii}" data-url="${esc(url)}" data-wi="${i}">
+              <div class="wi-img-wrap">
+                <img src="${esc(url)}" alt="img" onerror="this.closest('.wi-img-block').style.display='none'" onclick="window.open('${esc(url)}','_blank')">
+                <div class="wi-img-copy" onclick="copyImgUrl('${esc(url)}',this)">⎘ URL</div>
+              </div>
+              <div class="img-sel-btns">
+                <button class="img-sel-btn" id="cover-btn-${i}-${ii}" onclick="selectCover(${i},${ii},'${esc(url)}',this)">📌 Обложка</button>
+                <button class="img-sel-btn" id="intext-btn-${i}-${ii}" onclick="toggleInText(${i},${ii},'${esc(url)}',this)">📎 В текст</button>
+              </div>
+              <button class="img-translate-btn" onclick="translateImage('${esc(url)}','img-tr-${i}-${ii}',this)">⬡ Перевести текст</button>
+              <div class="img-translation" id="img-tr-${i}-${ii}"></div>
+            </div>`).join('')}
           </div>`;
       }
       body.innerHTML = imagesHtml + `<div style="padding:16px 20px 20px"><div class="wi-text">${esc(result.text)}</div></div>`;
@@ -920,6 +933,36 @@ async function callClaude(key, prompt, tools, maxTokens = 4096) {
   return data;
 }
 
+/* ---- IMAGE SELECTION FOR WP ---- */
+const imgSelections = {}; // { wiIdx: { cover: url|null, inText: Set<url> } }
+
+function getImgSel(wiIdx) {
+  if (!imgSelections[wiIdx]) imgSelections[wiIdx] = { cover: null, inText: new Set() };
+  return imgSelections[wiIdx];
+}
+function selectCover(wiIdx, imgIdx, url, btn) {
+  const sel = getImgSel(wiIdx);
+  if (sel.cover === url) {
+    sel.cover = null;
+    btn.classList.remove('active-cover');
+  } else {
+    // Снять предыдущую обложку
+    document.querySelectorAll(`[id^="cover-btn-${wiIdx}-"]`).forEach(b => b.classList.remove('active-cover'));
+    sel.cover = url;
+    btn.classList.add('active-cover');
+  }
+}
+function toggleInText(wiIdx, imgIdx, url, btn) {
+  const sel = getImgSel(wiIdx);
+  if (sel.inText.has(url)) {
+    sel.inText.delete(url);
+    btn.classList.remove('active-intext');
+  } else {
+    sel.inText.add(url);
+    btn.classList.add('active-intext');
+  }
+}
+
 /* ---- WORDPRESS ---- */
 function toggleWpFields() {
   const f = document.getElementById('wpFields');
@@ -979,35 +1022,61 @@ async function publishToWordPress(idx, e) {
     : stored.text.replace(/\n/g, '<br>');
 
   btn.disabled = true;
-  btn.textContent = '↻ Публикую...';
+  const credentials = btoa(`${wpUser}:${wpPass}`);
 
   try {
-    const credentials = btoa(`${wpUser}:${wpPass}`);
+    // 1. Загружаем обложку в WP если выбрана
+    let featuredMediaId = 0;
+    const sel = getImgSel(idx);
+    if (sel.cover) {
+      btn.textContent = '↻ Загружаю обложку...';
+      featuredMediaId = await uploadImageToWP(sel.cover, wpUrl, credentials);
+    }
+
+    // 2. Загружаем картинки "В текст" на сервер и вставляем в статью
+    let finalHtml = typeof marked !== 'undefined' ? marked.parse(stored.text) : stored.text.replace(/\n/g, '<br>');
+    if (sel.inText.size > 0) {
+      const inTextUrls = [...sel.inText];
+      const uploadedUrls = [];
+      for (let j = 0; j < inTextUrls.length; j++) {
+        btn.textContent = `↻ Загружаю фото ${j + 1}/${inTextUrls.length}...`;
+        try {
+          const mediaId = await uploadImageToWP(inTextUrls[j], wpUrl, credentials);
+          // Получаем URL загруженного файла из WP
+          const mediaResp = await fetch(`${wpUrl}/wp-json/wp/v2/media/${mediaId}`, {
+            headers: { 'Authorization': `Basic ${credentials}` }
+          });
+          const mediaData = await mediaResp.json();
+          uploadedUrls.push(mediaData.source_url || inTextUrls[j]);
+        } catch {
+          uploadedUrls.push(inTextUrls[j]); // fallback — оставляем оригинал
+        }
+      }
+      const inTextHtml = uploadedUrls.map(url =>
+        `<figure class="wp-block-image"><img src="${url}" alt=""/></figure>`
+      ).join('\n');
+      finalHtml = inTextHtml + '\n' + finalHtml;
+    }
+
+    // 3. Создаём пост
+    btn.textContent = '↻ Публикую...';
+    const postBody = { title, content: finalHtml, status, format: 'standard' };
+    if (featuredMediaId) postBody.featured_media = featuredMediaId;
+
     const resp = await fetch(`${wpUrl}/wp-json/wp/v2/posts`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${credentials}`
-      },
-      body: JSON.stringify({
-        title:   title,
-        content: htmlContent,
-        status:  status,
-        format:  'standard'
-      })
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${credentials}` },
+      body: JSON.stringify(postBody)
     });
     const data = await resp.json();
-    if (!resp.ok) {
-      throw new Error(data.message || 'HTTP ' + resp.status);
-    }
+    if (!resp.ok) throw new Error(data.message || 'HTTP ' + resp.status);
+
     const postUrl = data.link || `${wpUrl}/?p=${data.id}`;
     btn.textContent = '✓ Опубликовано';
     btn.style.borderColor = 'var(--accent)';
     btn.style.color = 'var(--accent)';
-    // Показываем ссылку на пост
     const actionsEl = btn.parentElement;
-    const existing = actionsEl.querySelector('.wp-post-link');
-    if (!existing) {
+    if (!actionsEl.querySelector('.wp-post-link')) {
       const link = document.createElement('a');
       link.className = 'wp-post-link';
       link.href = postUrl;
@@ -1028,6 +1097,37 @@ async function publishToWordPress(idx, e) {
       btn.disabled = false;
     }, 3000);
   }
+}
+
+async function uploadImageToWP(imageUrl, wpUrl, credentials) {
+  // Скачиваем картинку через PHP прокси (base64)
+  const proxyResp = await fetch(PROXY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'fetch_image_b64', url: imageUrl })
+  });
+  const proxyData = await proxyResp.json();
+  if (proxyData.error) throw new Error('Не удалось скачать картинку: ' + proxyData.error);
+
+  // Конвертируем base64 в blob
+  const byteChars = atob(proxyData.b64);
+  const byteArr = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+  const blob = new Blob([byteArr], { type: proxyData.mime });
+
+  // Загружаем в WP Media
+  const mediaResp = await fetch(`${wpUrl}/wp-json/wp/v2/media`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${credentials}`,
+      'Content-Disposition': `attachment; filename="${proxyData.filename}"`,
+      'Content-Type': proxyData.mime
+    },
+    body: blob
+  });
+  const mediaData = await mediaResp.json();
+  if (!mediaResp.ok) throw new Error('Ошибка загрузки в медиатеку: ' + (mediaData.message || mediaResp.status));
+  return mediaData.id;
 }
 
 /* ---- IMAGE TRANSLATE ---- */
