@@ -233,6 +233,9 @@
           </select>
           <button class="save-btn" style="margin:0;width:auto;padding:8px 12px;" onclick="saveWpSettings()">✓</button>
         </div>
+        <select class="wp-select" id="wpCategory" style="margin-top:4px;">
+          <option value="">— Рубрика (загрузи настройки) —</option>
+        </select>
         <div class="api-status" id="wpStatus2"></div>
       </div>
     </div>
@@ -1040,8 +1043,9 @@ function saveWpSettings() {
   localStorage.setItem('wp_url', url);
   localStorage.setItem('wp_user', user);
   localStorage.setItem('wp_pass', pass);
-  document.getElementById('wpStatus2').textContent = '✓ Настройки сохранены';
+  document.getElementById('wpStatus2').textContent = '✓ Сохранено, загружаю рубрики...';
   document.getElementById('wpStatus2').style.color = 'var(--accent)';
+  fetchWpCategories(url, user, pass);
 }
 function loadWpSettings() {
   const url = localStorage.getItem('wp_url') || '';
@@ -1055,8 +1059,32 @@ function loadWpSettings() {
     document.getElementById('wpToggleIcon').textContent = '▲';
     document.getElementById('wpStatus2').textContent = '✓ Настройки загружены';
     document.getElementById('wpStatus2').style.color = 'var(--accent)';
+    fetchWpCategories(url, user, pass);
   }
 }
+async function fetchWpCategories(url, user, pass) {
+  const sel = document.getElementById('wpCategory');
+  sel.innerHTML = '<option value="">— Загружаю рубрики... —</option>';
+  try {
+    const resp = await fetch(`${url}/wp-json/wp/v2/categories?per_page=100`, {
+      headers: { 'Authorization': `Basic ${btoa(`${user}:${pass}`)}` }
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const cats = await resp.json();
+    const saved = localStorage.getItem('wp_category') || '';
+    sel.innerHTML = '<option value="">— Без рубрики —</option>' +
+      cats.map(c => `<option value="${c.id}" ${String(c.id) === saved ? 'selected' : ''}>${'&nbsp;'.repeat((c.parent ? 2 : 0))}${c.name} (${c.count})</option>`).join('');
+    document.getElementById('wpStatus2').textContent = `✓ Загружено ${cats.length} рубрик`;
+    document.getElementById('wpStatus2').style.color = 'var(--accent)';
+  } catch(e) {
+    sel.innerHTML = '<option value="">— Ошибка загрузки рубрик —</option>';
+    document.getElementById('wpStatus2').textContent = '✗ Не удалось загрузить рубрики: ' + e.message;
+    document.getElementById('wpStatus2').style.color = 'var(--danger)';
+  }
+}
+document.getElementById('wpCategory').addEventListener('change', function() {
+  localStorage.setItem('wp_category', this.value);
+});
 
 async function publishToWordPress(idx, e) {
   e.stopPropagation();
@@ -1121,8 +1149,10 @@ async function publishToWordPress(idx, e) {
 
     // 3. Создаём пост
     btn.textContent = '↻ Публикую...';
+    const categoryId = document.getElementById('wpCategory').value;
     const postBody = { title, content: finalHtml, status, format: 'standard' };
     if (featuredMediaId) postBody.featured_media = featuredMediaId;
+    if (categoryId) postBody.categories = [parseInt(categoryId)];
 
     const resp = await fetch(`${wpUrl}/wp-json/wp/v2/posts`, {
       method: 'POST',
