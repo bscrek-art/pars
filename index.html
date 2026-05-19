@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Агент-разведчик · News Scout</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap');
   :root {
@@ -123,6 +124,9 @@
   .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
   .toggle-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
   .toggle-btn:hover { background: var(--surface2); color: var(--text); }
+  .full-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .full-btn:hover { border-color: var(--pending); color: var(--pending); }
+  .full-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .wi-body { display: none; border-top: 1px solid var(--border); padding: 20px; }
   .wi-body.open { display: block; }
   .wi-text { font-size: 13px; line-height: 1.75; color: #c0c0cc; white-space: pre-wrap; font-family: 'Inter', sans-serif; }
@@ -136,9 +140,24 @@
   .wi-img-copy { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: var(--accent); font-size: 10px; text-align: center; padding: 3px; cursor: pointer; opacity: 0; transition: opacity 0.15s; }
   .wi-img-wrap:hover .wi-img-copy { opacity: 1; }
   .wi-images-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 12px 20px 4px; }
+  .img-translate-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 4px 10px; font-size: 11px; cursor: pointer; transition: all 0.15s; margin: 4px 0 0 0; display: block; }
+  .img-translate-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .img-translate-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .img-translation { font-size: 12px; color: #c0c0cc; line-height: 1.65; margin-top: 6px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; display: none; white-space: pre-wrap; }
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  /* WordPress block */
+  .wp-section { padding: 12px 20px; border-top: 1px solid var(--border); }
+  .wp-section .sidebar-label { margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+  .wp-section .sidebar-label span { color: var(--muted); font-size: 10px; }
+  .wp-fields { display: none; flex-direction: column; gap: 8px; }
+  .wp-fields.open { display: flex; }
+  .wp-status-row { display: flex; gap: 6px; align-items: center; }
+  .wp-select { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; color: var(--text); font-size: 12px; outline: none; cursor: pointer; }
+  .publish-btn { background: none; border: 1px solid #4f8af7; color: #4f8af7; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .publish-btn:hover { background: rgba(79,138,247,0.12); }
+  .publish-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   /* Category switcher */
   .cat-switcher { display: flex; gap: 6px; margin-bottom: 20px; }
   .cat-btn { background: var(--surface); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 8px 16px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
@@ -177,6 +196,25 @@
       <button class="filter-btn" onclick="setFilter('pending',this)"><span class="dot dot-pending"></span>Не решено</button>
       <button class="filter-btn" onclick="setFilter('take',this)"><span class="dot dot-take"></span>Взять в работу</button>
       <button class="filter-btn" onclick="setFilter('skip',this)"><span class="dot dot-skip"></span>Пропустить</button>
+    </div>
+    <div class="wp-section">
+      <div class="sidebar-label" onclick="toggleWpFields()">
+        <span style="color:var(--text);font-size:10px;text-transform:uppercase;letter-spacing:.08em;">WordPress</span>
+        <span id="wpToggleIcon">▼</span>
+      </div>
+      <div class="wp-fields" id="wpFields">
+        <input class="field-input" type="text" id="wpUrl" placeholder="https://yoursite.com" autocomplete="off">
+        <input class="field-input" type="text" id="wpUser" placeholder="Логин пользователя" autocomplete="off">
+        <input class="field-input" type="password" id="wpPass" placeholder="Application Password" autocomplete="off">
+        <div class="wp-status-row">
+          <select class="wp-select" id="wpStatus">
+            <option value="draft">Черновик</option>
+            <option value="publish">Опубликовать</option>
+          </select>
+          <button class="save-btn" style="margin:0;width:auto;padding:8px 12px;" onclick="saveWpSettings()">✓</button>
+        </div>
+        <div class="api-status" id="wpStatus2"></div>
+      </div>
     </div>
     <div class="sidebar-bottom">
       <button class="send-btn" id="sendBtn" disabled onclick="startWriting()">✦ Написать статьи</button>
@@ -327,6 +365,7 @@ function switchCategory(cat, btn) {
 }
 
 renderTabs();
+loadWpSettings();
 
 /* ---- SETTINGS ---- */
 function saveSettings() {
@@ -635,7 +674,7 @@ async function startWriting() {
       `Пишу ${i + 1} из ${selected.length}: ${a.title_ru || a.title_en}`;
     try {
       const result = await writeArticle(key, a);
-      writtenTexts[i] = result;
+      writtenTexts[i] = { ...result, article: a };
       setWiStatus(i, 'done', '✓');
       document.getElementById(`wi-${i}`).classList.add('wi-done');
       const body = document.getElementById(`wib-${i}`);
@@ -646,13 +685,17 @@ async function startWriting() {
             <div class="wi-img-wrap">
               <img src="${esc(url)}" alt="img" onerror="this.parentElement.style.display='none'" onclick="window.open('${esc(url)}','_blank')">
               <div class="wi-img-copy" onclick="copyImgUrl('${esc(url)}',this)">⎘ URL</div>
-            </div>`).join('')}
+            </div>
+            <button class="img-translate-btn" onclick="translateImage('${esc(url)}','img-tr-${i}-${ii}',this)">⬡ Перевести текст</button>
+            <div class="img-translation" id="img-tr-${i}-${ii}"></div>`).join('')}
           </div>`;
       }
       body.innerHTML = imagesHtml + `<div style="padding:16px 20px 20px"><div class="wi-text">${esc(result.text)}</div></div>`;
       body.classList.add('open');
       document.getElementById(`wia-${i}`).innerHTML = `
         <button class="copy-btn" onclick="copyOne(${i},event)">⎘ Копировать</button>
+        <button class="publish-btn" onclick="publishToWordPress(${i},event)" title="Опубликовать в WordPress">⬆ WordPress</button>
+        <button class="full-btn" onclick="rewriteFull(${i},event)" title="Полный перевод без сокращений">⇄ Полная версия</button>
         <button class="toggle-btn" onclick="toggleWiBody(${i})">▲</button>`;
     } catch(e) {
       setWiStatus(i, 'error', '✗');
@@ -875,6 +918,226 @@ async function callClaude(key, prompt, tools, maxTokens = 4096) {
   }
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
   return data;
+}
+
+/* ---- WORDPRESS ---- */
+function toggleWpFields() {
+  const f = document.getElementById('wpFields');
+  const icon = document.getElementById('wpToggleIcon');
+  f.classList.toggle('open');
+  icon.textContent = f.classList.contains('open') ? '▲' : '▼';
+}
+function saveWpSettings() {
+  const url = document.getElementById('wpUrl').value.trim().replace(/\/$/, '');
+  const user = document.getElementById('wpUser').value.trim();
+  const pass = document.getElementById('wpPass').value.trim();
+  if (!url || !user || !pass) {
+    document.getElementById('wpStatus2').textContent = '✗ Заполни все поля';
+    document.getElementById('wpStatus2').style.color = 'var(--danger)';
+    return;
+  }
+  localStorage.setItem('wp_url', url);
+  localStorage.setItem('wp_user', user);
+  localStorage.setItem('wp_pass', pass);
+  document.getElementById('wpStatus2').textContent = '✓ Настройки сохранены';
+  document.getElementById('wpStatus2').style.color = 'var(--accent)';
+}
+function loadWpSettings() {
+  const url = localStorage.getItem('wp_url') || '';
+  const user = localStorage.getItem('wp_user') || '';
+  const pass = localStorage.getItem('wp_pass') || '';
+  document.getElementById('wpUrl').value = url;
+  document.getElementById('wpUser').value = user;
+  document.getElementById('wpPass').value = pass;
+  if (url && user && pass) {
+    document.getElementById('wpFields').classList.add('open');
+    document.getElementById('wpToggleIcon').textContent = '▲';
+    document.getElementById('wpStatus2').textContent = '✓ Настройки загружены';
+    document.getElementById('wpStatus2').style.color = 'var(--accent)';
+  }
+}
+
+async function publishToWordPress(idx, e) {
+  e.stopPropagation();
+  const btn = e.target;
+  const stored = writtenTexts[idx];
+  if (!stored) return;
+
+  const wpUrl  = localStorage.getItem('wp_url');
+  const wpUser = localStorage.getItem('wp_user');
+  const wpPass = localStorage.getItem('wp_pass');
+  if (!wpUrl || !wpUser || !wpPass) {
+    alert('Сначала заполни настройки WordPress в сайдбаре');
+    return;
+  }
+
+  const article = stored.article;
+  const status  = document.getElementById('wpStatus').value;
+  const title   = article.title_ru || article.title_en || 'Без заголовка';
+  const htmlContent = typeof marked !== 'undefined'
+    ? marked.parse(stored.text)
+    : stored.text.replace(/\n/g, '<br>');
+
+  btn.disabled = true;
+  btn.textContent = '↻ Публикую...';
+
+  try {
+    const credentials = btoa(`${wpUser}:${wpPass}`);
+    const resp = await fetch(`${wpUrl}/wp-json/wp/v2/posts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${credentials}`
+      },
+      body: JSON.stringify({
+        title:   title,
+        content: htmlContent,
+        status:  status,
+        format:  'standard'
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      throw new Error(data.message || 'HTTP ' + resp.status);
+    }
+    const postUrl = data.link || `${wpUrl}/?p=${data.id}`;
+    btn.textContent = '✓ Опубликовано';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    // Показываем ссылку на пост
+    const actionsEl = btn.parentElement;
+    const existing = actionsEl.querySelector('.wp-post-link');
+    if (!existing) {
+      const link = document.createElement('a');
+      link.className = 'wp-post-link';
+      link.href = postUrl;
+      link.target = '_blank';
+      link.textContent = '↗ Открыть';
+      link.style.cssText = 'font-size:12px;color:var(--accent);text-decoration:none;white-space:nowrap;';
+      actionsEl.insertBefore(link, btn.nextSibling);
+    }
+  } catch(err) {
+    btn.textContent = '✗ Ошибка';
+    btn.style.borderColor = 'var(--danger)';
+    btn.style.color = 'var(--danger)';
+    alert('Ошибка публикации: ' + err.message + '\n\nПроверь URL сайта, логин и Application Password.');
+    setTimeout(() => {
+      btn.textContent = '⬆ WordPress';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+      btn.disabled = false;
+    }, 3000);
+  }
+}
+
+/* ---- IMAGE TRANSLATE ---- */
+async function translateImage(imageUrl, outputId, btn) {
+  const key = document.getElementById('apiKey').value.trim();
+  const output = document.getElementById(outputId);
+  btn.disabled = true;
+  btn.textContent = '↻ Читаю изображение...';
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 2048,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'url', url: imageUrl } },
+            { type: 'text', text: `Переведи весь текст с этого изображения на русский язык.
+Правила:
+- Названия продуктов, модели, аббревиатуры (GPU, CPU, FPS, RTX и т.п.) оставляй как есть
+- Сохраняй структуру таблиц, списков и колонок
+- Числа и единицы измерения не меняй
+- Если текста нет или изображение декоративное — напиши: "Текст на изображении отсутствует"
+Верни ТОЛЬКО переведённый текст, без пояснений.` }
+          ]
+        }]
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message || 'Ошибка API');
+    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    output.textContent = text;
+    output.style.display = 'block';
+    btn.textContent = '✓ Перевод готов';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+  } catch(e) {
+    output.textContent = 'Ошибка: ' + e.message;
+    output.style.display = 'block';
+    btn.textContent = '✗ Ошибка';
+    btn.disabled = false;
+  }
+}
+
+/* ---- FULL REWRITE ---- */
+async function rewriteFull(idx, e) {
+  e.stopPropagation();
+  const btn = e.target;
+  const stored = writtenTexts[idx];
+  if (!stored) return;
+  const article = stored.article;
+  const key = document.getElementById('apiKey').value.trim();
+
+  btn.disabled = true;
+  btn.textContent = '↻ Перевожу...';
+  setWiStatus(idx, 'processing', '↻');
+
+  try {
+    const prompt = `Ты — профессиональный переводчик и редактор для Яндекс Дзен, работаешь для магазина игровых ПК.
+
+ЗАДАЧА: Сделай полный перевод и адаптацию статьи на русский язык, сохраняя весь объём и структуру оригинала. Ничего не сокращай.
+
+Заголовок: ${article.title_en || article.title_ru}
+Описание: ${article.desc_ru || ''}
+URL оригинала: ${article.url}
+
+КАТАЛОГ ПК (упомяни в конце если уместно):
+- Оксиген III / Кварц III — Full HD
+- Оксиген V / Кварц V — Full HD + начало 2K
+- Оксиген V+ / Кварц V+ — 2K
+- Оксиген VII / Кварц VII — 2K + комфортный 4K
+- Оксиген IX / Кварц IX — топ 4K для энтузиастов
+
+ТРЕБОВАНИЯ:
+- Переведи максимально полно, сохраняя все детали, цифры, цитаты и структуру оригинала
+- Обращение на "ты", живой русский язык без дословного калькирования
+- Формат: Markdown с заголовками
+- Не упоминай сайт-источник
+
+Верни ТОЛЬКО текст статьи в Markdown.`;
+
+    const data = await callClaude(key, prompt, null, 8192);
+    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    if (!text) throw new Error('Пустой ответ');
+
+    writtenTexts[idx] = { ...stored, text };
+    setWiStatus(idx, 'done', '✓');
+
+    const body = document.getElementById(`wib-${idx}`);
+    const imagesHtml = body.querySelector('.wi-images')
+      ? body.innerHTML.split('<div style=')[0]
+      : '';
+    body.innerHTML = imagesHtml + `<div style="padding:16px 20px 20px"><div class="wi-text">${esc(text)}</div></div>`;
+    body.classList.add('open');
+
+    btn.textContent = '✓ Готово';
+    setTimeout(() => { btn.textContent = '⇄ Полная версия'; btn.disabled = false; }, 2000);
+  } catch(err) {
+    setWiStatus(idx, 'done', '✓');
+    btn.textContent = '✗ Ошибка';
+    setTimeout(() => { btn.textContent = '⇄ Полная версия'; btn.disabled = false; }, 2000);
+  }
 }
 
 /* ---- BACK ---- */
