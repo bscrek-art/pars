@@ -346,7 +346,7 @@ const SOURCES = {
   kotaku: {
     id: 'kotaku', name: 'Kotaku', domain: 'kotaku.com',
     category: 'features', useProxy: false,
-    rssUrls: ['https://kotaku.com/feed/rss']
+    rssUrls: ['https://kotaku.com/rss', 'https://kotaku.com/feed']
   },
   arstechnica: {
     id: 'arstechnica', name: 'Ars Technica', domain: 'arstechnica.com',
@@ -355,7 +355,7 @@ const SOURCES = {
   },
   screenrant: {
     id: 'screenrant', name: 'Screen Rant', domain: 'screenrant.com',
-    category: 'features', useProxy: false,
+    category: 'features', useProxy: true,
     rssUrls: ['https://screenrant.com/feed/']
   },
 };
@@ -507,11 +507,33 @@ async function fetchRSSWithFallback(src) {
 function parseRSS(xml) {
   const doc = new DOMParser().parseFromString(xml, 'text/xml');
   const items = [...doc.querySelectorAll('item, entry')];
-  return items.slice(0, 40).map(item => ({
-    title: item.querySelector('title')?.textContent?.trim() || '',
-    link:  item.querySelector('link')?.textContent?.trim() || item.querySelector('link')?.getAttribute('href') || '',
-    desc:  (item.querySelector('description, summary')?.textContent || '').replace(/<[^>]+>/g, '').slice(0, 300)
-  })).filter(i => i.title);
+  return items.slice(0, 40).map(item => {
+    // Извлекаем картинку: enclosure > media:content > img в description
+    let image = '';
+    const enclosure = item.querySelector('enclosure');
+    if (enclosure) {
+      const url = enclosure.getAttribute('url') || '';
+      if (/\.(jpg|jpeg|png|webp)/i.test(url) || enclosure.getAttribute('type')?.startsWith('image')) {
+        image = url;
+      }
+    }
+    if (!image) {
+      const media = item.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'content')[0]
+                 || item.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'thumbnail')[0];
+      if (media) image = media.getAttribute('url') || '';
+    }
+    if (!image) {
+      const descHtml = item.querySelector('description, summary')?.textContent || '';
+      const imgMatch = descHtml.match(/<img[^>]+src=["']([^"']+\.(?:jpg|jpeg|png|webp))/i);
+      if (imgMatch) image = imgMatch[1];
+    }
+    return {
+      title: item.querySelector('title')?.textContent?.trim() || '',
+      link:  item.querySelector('link')?.textContent?.trim() || item.querySelector('link')?.getAttribute('href') || '',
+      desc:  (item.querySelector('description, summary')?.textContent || '').replace(/<[^>]+>/g, '').slice(0, 300),
+      image,
+    };
+  }).filter(i => i.title);
 }
 
 /* ---- LOAD NEWS ---- */
@@ -638,7 +660,13 @@ ${feedText}
     const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
     const parsed = parseClaudeJSON(text);
     if (!parsed) throw new Error('Не удалось разобрать ответ. Попробуй ещё раз.');
-    allArticles[currentTab] = parsed.map((a, i) => ({ ...a, id: i + 1, source: currentTab }));
+    // Карта URL → картинка из RSS (Kotaku, Screen Rant хранят их в <enclosure>)
+    const rssImageMap = {};
+    items.forEach(it => { if (it.image && it.link) rssImageMap[it.link] = it.image; });
+    allArticles[currentTab] = parsed.map((a, i) => ({
+      ...a, id: i + 1, source: currentTab,
+      rssImage: rssImageMap[a.url] || ''
+    }));
     allArticles[currentTab].forEach(a => { allDecisions[currentTab][a.id] = 'pending'; });
 
     setProgress(100, 'Готово!');
@@ -779,8 +807,8 @@ async function startWriting() {
 }
 
 async function writeArticle(key, article) {
-  // Шаг 1: достаём картинки со страницы через PHP прокси (cURL обходит Cloudflare)
-  let images = [];
+  // Шаг 1: картинки — из RSS (enclosure/media) если есть, иначе через PHP прокси
+  let images = article.rssImage ? [article.rssImage] : [];
   try {
     const imgResp = await fetch(PROXY_URL, {
       method: 'POST',
@@ -789,7 +817,10 @@ async function writeArticle(key, article) {
     });
     if (imgResp.ok) {
       const imgData = await imgResp.json();
-      if (Array.isArray(imgData.images)) images = imgData.images;
+      if (Array.isArray(imgData.images)) {
+        // Добавляем картинки со страницы, не дублируя RSS-картинку
+        imgData.images.forEach(u => { if (!images.includes(u)) images.push(u); });
+      }
     }
   } catch {}
 
@@ -802,18 +833,11 @@ async function writeArticle(key, article) {
 Описание: ${article.desc_ru || ''}
 Источник: ${article.url}
 
-КАТАЛОГ ПК МАГАЗИНА (для рекомендаций в конце, если уместно):
-- Оксиген III / Кварц III — Full HD
-- Оксиген V / Кварц V — Full HD + начало 2K
-- Оксиген V+ / Кварц V+ — 2K
-- Оксиген VII / Кварц VII — 2K + комфортный 4K
-- Оксиген IX / Кварц IX — топ 4K для энтузиастов
-
 СТРУКТУРА СТАТЬИ:
 1. Вступительный абзац — цепляющее начало, о чём материал
 2. ## Краткое содержание — маркированный список 3-5 ключевых тезисов
 3. Основная часть — разверни тему в нескольких разделах ## (список, сравнение, разбор — в зависимости от темы)
-4. Финальный абзац — вывод и при уместности рекомендация ПК из каталога
+4. Финальный абзац — вывод и заключение
 
 ТРЕБОВАНИЯ:
 - Заголовок H1 — придумай сам, цепляющий, интригующий, не переводи дословно с оригинала
@@ -830,18 +854,11 @@ async function writeArticle(key, article) {
 Описание: ${article.desc_ru || ''}
 Источник: ${article.url}
 
-КАТАЛОГ ПК МАГАЗИНА (для рекомендаций в конце, если уместно):
-- Оксиген III / Кварц III — Full HD
-- Оксиген V / Кварц V — Full HD + начало 2K
-- Оксиген V+ / Кварц V+ — 2K
-- Оксиген VII / Кварц VII — 2K + комфортный 4K
-- Оксиген IX / Кварц IX — топ 4K для энтузиастов
-
 СТРУКТУРА СТАТЬИ:
 1. Вступительный абзац — о чём обзор и почему это интересно
 2. ## Краткое содержание — маркированный список 3-5 ключевых фактов об устройстве
 3. Разделы ## с разбором: характеристики, дизайн, производительность, выводы
-4. Финальный абзац — итоговая оценка и, если уместно, рекомендация ПК из каталога
+4. Финальный абзац — итоговая оценка и общий вывод
 
 ТРЕБОВАНИЯ:
 - Заголовок H1 — придумай сам, цепляющий, интригующий, не переводи дословно с оригинала
@@ -859,26 +876,11 @@ async function writeArticle(key, article) {
 Описание: ${article.desc_ru || ''}
 Источник: ${article.url}
 
-КАТАЛОГ ПК МАГАЗИНА (используй для рекомендаций в конце):
-Линейка ОКСИГЕН (игровые ПК с подсветкой):
-- Оксиген III — Full HD-гейминг без переплат
-- Оксиген V — Баланс мощности и цены для Full HD и начального 2K
-- Оксиген V+ — Мощный ПК для 2K-гейминга без переплат
-- Оксиген VII — Ультимативное решение для 2K и комфортного 4K
-- Оксиген IX — Безграничные возможности для истинных энтузиастов (топ 4K)
-
-Линейка КВАРЦ (настольные ПК, элегантный дизайн):
-- Кварц III — Настольный игровой ПК для Full HD
-- Кварц V — Баланс красоты и мощности для Full HD и начального 2K
-- Кварц V+ — Красивый и мощный ПК для 2K-гейминга
-- Кварц VII — Ультимативно-роскошное решение для 2K и комфортного 4K
-- Кварц IX — Безграничные возможности для энтузиастов в кристальном исполнении (топ 4K)
-
 СТРУКТУРА СТАТЬИ:
 1. Вступительный абзац — цепляющее начало, суть новости в 2-3 предложениях
 2. ## Краткое содержание — маркированный список 3-5 ключевых фактов
 3. Несколько разделов ## с техническим разбором (характеристики, что это значит для пользователя, сравнение с конкурентами)
-4. Финальный абзац — объясни какой ПК из каталога выиграет от этого железа/обновления и рекомендуй конкретные модели
+4. Финальный абзац — вывод и общее заключение
 
 ТРЕБОВАНИЯ:
 - Заголовок H1 — придумай сам, цепляющий, интригующий, не переводи дословно с оригинала
@@ -896,26 +898,11 @@ async function writeArticle(key, article) {
 Описание: ${article.desc_ru || ''}
 Источник: ${article.url}
 
-КАТАЛОГ ПК МАГАЗИНА (используй для рекомендаций в конце статьи):
-Линейка ОКСИГЕН (игровые ПК с подсветкой):
-- Оксиген III — Full HD-гейминг без переплат (бюджетный)
-- Оксиген V — Баланс мощности и цены для Full HD и начального 2K
-- Оксиген V+ — Мощный ПК для 2K-гейминга без переплат
-- Оксиген VII — Ультимативное решение для 2K-гейминга и комфортного 4K
-- Оксиген IX — Безграничные возможности для истинных энтузиастов (топ 4K)
-
-Линейка КВАРЦ (настольные игровые ПК, элегантный дизайн):
-- Кварц III — Настольный игровой ПК для Full HD-гейминга
-- Кварц V — Баланс красоты и мощности для Full HD и начального 2K
-- Кварц V+ — Красивый и мощный ПК для 2K-гейминга
-- Кварц VII — Ультимативно-роскошное решение для 2K-гейминга и комфортного 4K
-- Кварц IX — Безграничные возможности для энтузиастов в кристальном исполнении (топ 4K)
-
 СТРУКТУРА СТАТЬИ (строго соблюдай):
 1. Вступительный абзац — цепляющее начало, суть новости в 2-3 предложениях
 2. ## Краткое содержание — маркированный список 3-5 ключевых фактов
 3. Несколько разделов ## с подробным разбором (2-4 раздела)
-4. Финальный абзац — органичная рекомендация купить подходящий ПК из каталога. Если в новости есть системные требования или упоминается разрешение/производительность — подбери конкретные модели. Если новость про игру без требований — порекомендуй универсально.
+4. Финальный абзац — вывод и заключение без рекламных призывов
 
 ТРЕБОВАНИЯ К ТЕКСТУ:
 - Заголовок H1 — придумай сам, цепляющий, интригующий, не переводи дословно с оригинала
@@ -1465,13 +1452,6 @@ async function rewriteFull(idx, e) {
 Заголовок: ${article.title_en || article.title_ru}
 Описание: ${article.desc_ru || ''}
 URL оригинала: ${article.url}
-
-КАТАЛОГ ПК (упомяни в конце если уместно):
-- Оксиген III / Кварц III — Full HD
-- Оксиген V / Кварц V — Full HD + начало 2K
-- Оксиген V+ / Кварц V+ — 2K
-- Оксиген VII / Кварц VII — 2K + комфортный 4K
-- Оксиген IX / Кварц IX — топ 4K для энтузиастов
 
 ТРЕБОВАНИЯ:
 - Заголовок H1 — придумай сам, цепляющий, не переводи дословно с оригинала
