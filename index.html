@@ -565,7 +565,9 @@ async function startLoad() {
     log(`✓ ${items.length} записей в RSS`);
     setProgress(45, 'Отправляю в Claude...');
 
-    const feedText = items.map((it, i) =>
+    // Для gaming берём 20 записей (просим 20), для остальных — все 40
+    const feedItems = (!isHardware && !isReviews && !isFeatures) ? items.slice(0, 20) : items;
+    const feedText = feedItems.map((it, i) =>
       `${i+1}. [${it.title}](${it.link})\n${it.desc}`
     ).join('\n\n');
 
@@ -652,7 +654,7 @@ ${feedText}
   }
 ]`;
 
-    const maxTok = (isHardware || isReviews || isFeatures) ? 8192 : 4096;
+    const maxTok = 8192;
     const data = await callClaude(key, prompt, null, maxTok);
     log('✓ Ответ получен', 'ok');
     setProgress(85, 'Парсю статьи...');
