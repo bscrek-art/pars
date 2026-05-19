@@ -178,6 +178,19 @@
   .publish-btn { background: none; border: 1px solid #4f8af7; color: #4f8af7; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
   .publish-btn:hover { background: rgba(79,138,247,0.12); }
   .publish-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  /* CTA panel */
+  .cta-panel { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 12px; background: var(--surface2); border-top: 1px solid var(--border); }
+  .cta-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .cta-select { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; color: var(--text); font-size: 12px; outline: none; cursor: pointer; min-width: 200px; }
+  .cta-select:focus { border-color: var(--accent); }
+  .cta-lineups { display: none; flex-wrap: wrap; gap: 4px; align-items: center; width: 100%; padding-top: 4px; }
+  .cta-lineups.visible { display: flex; }
+  .cta-lineup-cb { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); cursor: pointer; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 3px 8px; }
+  .cta-lineup-cb input { accent-color: var(--accent); cursor: pointer; }
+  .cta-lineup-cb:has(input:checked) { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .cta-btn { background: none; border: 1px solid var(--accent); color: var(--accent); border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .cta-btn:hover { background: var(--accent); color: #000; }
+  .cta-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   /* Category switcher */
   .cat-switcher { display: flex; gap: 6px; margin-bottom: 20px; }
   .cat-btn { background: var(--surface); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 8px 16px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
@@ -731,7 +744,24 @@ async function startWriting() {
         <button class="copy-btn" onclick="copyOne(${i},event)">⎘ Копировать</button>
         <button class="publish-btn" onclick="publishToWordPress(${i},event)" title="Опубликовать в WordPress">⬆ WordPress</button>
         <button class="full-btn" onclick="rewriteFull(${i},event)" title="Полный перевод без сокращений">⇄ Полная версия</button>
-        <button class="toggle-btn" onclick="toggleWiBody(${i})">▲</button>`;
+        <button class="toggle-btn" onclick="toggleWiBody(${i})">▲</button>
+        <div class="cta-panel">
+          <span class="cta-label">Подводка:</span>
+          <select class="cta-select" id="cta-type-${i}" onchange="onCtaTypeChange(${i})">
+            <option value="">— Без подводки —</option>
+            <option value="availability">📦 Узнать о наличии товара</option>
+            <option value="gaming">🎮 ПК для комфортной игры</option>
+            <option value="subscribe">📢 Подписаться на Дзен</option>
+          </select>
+          <button class="cta-btn" id="cta-btn-${i}" onclick="addCta(${i},event)">+ Добавить</button>
+          <div class="cta-lineups" id="cta-lineups-${i}">
+            <span class="cta-label">Линейки:</span>
+            ${[
+              ['ox3','Оксиген III'],['ox5','Оксиген V'],['ox7','Оксиген VII'],['ox9','Оксиген IX'],
+              ['kv3','Кварц III'],['kv5','Кварц V'],['kv7','Кварц VII'],['kv9','Кварц IX']
+            ].map(([val,lbl]) => `<label class="cta-lineup-cb"><input type="checkbox" value="${val}" id="cta-lu-${i}-${val}"> ${lbl}</label>`).join('')}
+          </div>
+        </div>`;
     } catch(e) {
       setWiStatus(i, 'error', '✗');
       document.getElementById(`wi-${i}`).classList.add('wi-error');
@@ -1252,6 +1282,115 @@ async function uploadImageToWP(imageUrl, wpUrl, credentials) {
   }
   if (!mediaResp.ok) throw new Error('Ошибка загрузки в медиатеку: ' + (mediaData.message || mediaResp.status));
   return mediaData.id;
+}
+
+/* ---- CTA (ПОДВОДКА) ---- */
+const LINEUP_NAMES = {
+  ox3: 'Оксиген III (Full HD, бюджетный)',
+  ox5: 'Оксиген V (Full HD / начало 2K)',
+  ox7: 'Оксиген VII (2K / начало 4K)',
+  ox9: 'Оксиген IX (топ 4K, флагман)',
+  kv3: 'Кварц III (элегантный дизайн, Full HD)',
+  kv5: 'Кварц V (элегантный, Full HD / 2K)',
+  kv7: 'Кварц VII (элегантный, 2K / 4K)',
+  kv9: 'Кварц IX (элегантный флагман, 4K)',
+};
+
+function onCtaTypeChange(idx) {
+  const type = document.getElementById(`cta-type-${idx}`).value;
+  const lineupsEl = document.getElementById(`cta-lineups-${idx}`);
+  lineupsEl.classList.toggle('visible', type === 'gaming');
+}
+
+async function addCta(idx, e) {
+  e.stopPropagation();
+  const key = document.getElementById('apiKey').value.trim();
+  if (!key) { alert('Введи API ключ'); return; }
+  const type = document.getElementById(`cta-type-${idx}`).value;
+  if (!type) { alert('Выбери тип подводки'); return; }
+
+  const stored = writtenTexts[idx];
+  if (!stored) return;
+
+  const btn = document.getElementById(`cta-btn-${idx}`);
+  btn.disabled = true;
+  btn.textContent = '↻ Пишу...';
+
+  try {
+    const articleSnippet = stored.text.slice(0, 800);
+    let prompt = '';
+
+    if (type === 'availability') {
+      prompt = `Ты — копирайтер магазина игровых ПК "КометаПК" (сайт: https://kometapc.ru/).
+Тебе дан отрывок статьи о технике (процессоре, видеокарте, геймпаде, наушниках или другом устройстве):
+
+---
+${articleSnippet}
+---
+
+Напиши финальный абзац-подводку (3-4 предложения) для этой статьи в стиле:
+- Напоминаем, что найти данную технику и уточнить наличие можно у наших менеджеров
+- Призыв написать менеджерам для уточнения наличия и цены
+- Ссылка на сайт: https://kometapc.ru/
+Пиши живо и дружелюбно, на русском языке. Верни ТОЛЬКО текст абзаца, без markdown заголовков.`;
+
+    } else if (type === 'gaming') {
+      const checked = [...document.querySelectorAll(`#cta-lineups-${idx} input:checked`)].map(cb => LINEUP_NAMES[cb.value] || cb.value);
+      const lineupsStr = checked.length ? checked.join(', ') : 'Оксиген V, Кварц V';
+      prompt = `Ты — копирайтер магазина игровых ПК "КометаПК" (сайт: https://kometapc.ru/).
+Тебе дан отрывок статьи об игре или игровом событии:
+
+---
+${articleSnippet}
+---
+
+Напиши финальный абзац-подводку (3-4 предложения):
+- Расскажи, что для комфортной игры в эту игру идеально подойдут следующие линейки: ${lineupsStr}
+- Кратко объясни почему (мощность, разрешение, стабильный FPS)
+- Призови написать менеджерам для подбора конфигурации по лучшей цене
+- Упомяни ссылку: https://kometapc.ru/
+Пиши живо, без занудства. Верни ТОЛЬКО текст абзаца, без markdown заголовков.`;
+
+    } else if (type === 'subscribe') {
+      prompt = `Ты — копирайтер магазина игровых ПК "КометаПК".
+Тебе дан отрывок статьи:
+
+---
+${articleSnippet}
+---
+
+Напиши короткий финальный абзац (2-3 предложения):
+- Призыв подписаться на наш канал в Яндекс Дзен чтобы быть в курсе всех новостей мира игр и железа
+- Пиши тепло и дружелюбно
+Верни ТОЛЬКО текст абзаца, без markdown заголовков.`;
+    }
+
+    const result = await callClaude(key, prompt, null, 512);
+    const ctaText = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+
+    // Добавляем подводку к тексту статьи
+    stored.text = stored.text.trimEnd() + '\n\n---\n\n' + ctaText;
+
+    // Перерисовываем текст статьи
+    const body = document.getElementById(`wib-${idx}`);
+    const imagesSection = body.querySelector('.wi-images-label');
+    const imagesHtml = imagesSection ? body.innerHTML.split('<div style=')[0] : '';
+    const { html: articleHtml, count: paraCount } = renderArticleHtml(stored.text);
+    body.innerHTML = imagesHtml + `<div style="padding:16px 20px 20px"><div class="wi-text" id="wi-text-${idx}">${articleHtml}</div><div style="font-size:10px;color:var(--muted);margin-top:8px;">Абзацев в статье: ${paraCount}</div></div>`;
+
+    btn.textContent = '✓ Добавлено';
+    btn.style.borderColor = 'var(--accent)';
+    setTimeout(() => {
+      btn.textContent = '+ Добавить';
+      btn.style.borderColor = '';
+      btn.disabled = false;
+    }, 2000);
+
+  } catch(err) {
+    btn.textContent = '✗ Ошибка';
+    btn.disabled = false;
+    alert('Ошибка генерации подводки: ' + err.message);
+  }
 }
 
 /* ---- IMAGE TRANSLATE ---- */
