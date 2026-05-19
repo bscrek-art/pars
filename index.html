@@ -323,6 +323,7 @@ const SOURCES = {
   insider: {
     id: 'insider', name: 'Insider Gaming', domain: 'insider-gaming.com',
     category: 'gaming', useProxy: false,
+    wpApi: 'https://insider-gaming.com',
     rssUrls: ['https://insider-gaming.com/feed/', 'https://insider-gaming.com/rss/']
   },
   // --- Железо и софт ---
@@ -527,11 +528,15 @@ function parseRSS(xml) {
       const imgMatch = descHtml.match(/<img[^>]+src=["']([^"']+\.(?:jpg|jpeg|png|webp))/i);
       if (imgMatch) image = imgMatch[1];
     }
+    // WordPress post-id (для получения featured image через WP REST API)
+    const postIdEl = item.getElementsByTagName('post-id')[0];
+    const postId = postIdEl ? postIdEl.textContent.trim() : '';
     return {
       title: item.querySelector('title')?.textContent?.trim() || '',
       link:  item.querySelector('link')?.textContent?.trim() || item.querySelector('link')?.getAttribute('href') || '',
       desc:  (item.querySelector('description, summary')?.textContent || '').replace(/<[^>]+>/g, '').slice(0, 300),
       image,
+      postId,
     };
   }).filter(i => i.title);
 }
@@ -660,12 +665,13 @@ ${feedText}
     const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
     const parsed = parseClaudeJSON(text);
     if (!parsed) throw new Error('Не удалось разобрать ответ. Попробуй ещё раз.');
-    // Карта URL → картинка из RSS (Kotaku, Screen Rant хранят их в <enclosure>)
-    const rssImageMap = {};
-    items.forEach(it => { if (it.image && it.link) rssImageMap[it.link] = it.image; });
+    // Карта URL → { image, postId } из RSS
+    const rssMap = {};
+    items.forEach(it => { if (it.link) rssMap[it.link] = { image: it.image || '', postId: it.postId || '' }; });
     allArticles[currentTab] = parsed.map((a, i) => ({
       ...a, id: i + 1, source: currentTab,
-      rssImage: rssImageMap[a.url] || ''
+      rssImage: rssMap[a.url]?.image || '',
+      postId:   rssMap[a.url]?.postId || '',
     }));
     allArticles[currentTab].forEach(a => { allDecisions[currentTab][a.id] = 'pending'; });
 
@@ -807,8 +813,26 @@ async function startWriting() {
 }
 
 async function writeArticle(key, article) {
-  // Шаг 1: картинки — из RSS (enclosure/media) если есть, иначе через PHP прокси
+  // Шаг 1: картинки — из RSS / WP REST API / PHP прокси
   let images = article.rssImage ? [article.rssImage] : [];
+
+  // Для WordPress-сайтов с wpApi — получаем featured image через REST API
+  const srcConf = SOURCES[article.source];
+  if (!images.length && srcConf?.wpApi && article.postId) {
+    try {
+      const wpResp = await fetch(
+        `${srcConf.wpApi}/wp-json/wp/v2/posts/${article.postId}?_embed&_fields=_embedded`,
+        { signal: AbortSignal.timeout(8000) }
+      );
+      if (wpResp.ok) {
+        const wpData = await wpResp.json();
+        const featImg = wpData?._embedded?.['wp:featuredmedia']?.[0]?.source_url;
+        if (featImg) images.push(featImg);
+      }
+    } catch {}
+  }
+
+  // Fallback: парсим страницу через PHP прокси
   try {
     const imgResp = await fetch(PROXY_URL, {
       method: 'POST',
@@ -818,7 +842,6 @@ async function writeArticle(key, article) {
     if (imgResp.ok) {
       const imgData = await imgResp.json();
       if (Array.isArray(imgData.images)) {
-        // Добавляем картинки со страницы, не дублируя RSS-картинку
         imgData.images.forEach(u => { if (!images.includes(u)) images.push(u); });
       }
     }
