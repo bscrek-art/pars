@@ -333,6 +333,11 @@ const SOURCES = {
       'https://news.google.com/rss/search?q=site:ign.com+games&hl=en-US&gl=US&ceid=US:en'
     ]
   },
+  twistedvoxel: {
+    id: 'twistedvoxel', name: 'TwistedVoxel', domain: 'twistedvoxel.com',
+    category: 'gaming', useProxy: true,
+    rssUrls: ['https://twistedvoxel.com/feed/']
+  },
   // --- Железо и софт ---
   wccftech: {
     id: 'wccftech', name: 'WCCFTech', domain: 'wccftech.com',
@@ -369,12 +374,6 @@ const SOURCES = {
       'https://news.google.com/rss/search?q=site:arstechnica.com+hardware+CPU+GPU&hl=en-US&gl=US&ceid=US:en'
     ]
   },
-  // --- Обзоры ---
-  techtesters_reviews: {
-    id: 'techtesters_reviews', name: 'TechTesters Обзоры', domain: 'techtesters.eu',
-    category: 'reviews', useProxy: false,
-    rssUrls: ['https://www.techtesters.eu/category/z-review/feed/']
-  },
   // --- Оценки игр ---
   metacritic_news: {
     id: 'metacritic_news', name: 'Metacritic Новости', domain: 'news.google.com',
@@ -390,12 +389,18 @@ const SOURCES = {
       'https://news.google.com/rss/search?q=%22opencritic%22+game+score&hl=en-US&gl=US&ceid=US:en'
     ]
   },
-  review_scores: {
-    id: 'review_scores', name: 'Оценки рецензий', domain: 'news.google.com',
+  twistedvoxel_ratings: {
+    id: 'twistedvoxel_ratings', name: 'TwistedVoxel Оценки', domain: 'twistedvoxel.com',
     category: 'ratings', useProxy: true,
     rssUrls: [
-      'https://news.google.com/rss/search?q=game+%22review+score%22+rating+critics&hl=en-US&gl=US&ceid=US:en'
+      'https://news.google.com/rss/search?q=site:twistedvoxel.com+metacritic&hl=en-US&gl=US&ceid=US:en'
     ]
+  },
+  // --- Обзоры ---
+  techtesters_reviews: {
+    id: 'techtesters_reviews', name: 'TechTesters Обзоры', domain: 'techtesters.eu',
+    category: 'reviews', useProxy: false,
+    rssUrls: ['https://www.techtesters.eu/category/z-review/feed/']
   },
   // --- Фичи и гайды ---
   kotaku: {
