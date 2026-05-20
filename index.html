@@ -270,6 +270,9 @@
         <button class="cat-btn" id="cat-features" onclick="switchCategory('features',this)">
           <span class="cat-icon">✦</span>Фичи и гайды
         </button>
+        <button class="cat-btn" id="cat-ratings" onclick="switchCategory('ratings',this)">
+          <span class="cat-icon">🏆</span>Оценки игр
+        </button>
       </div>
       <div class="tabs" id="tabsRow"></div>
       <div class="progress-wrap" id="progressWrap">
@@ -321,6 +324,11 @@ const SOURCES = {
     wpApi: 'https://insider-gaming.com',
     rssUrls: ['https://insider-gaming.com/feed/', 'https://insider-gaming.com/rss/']
   },
+  ign: {
+    id: 'ign', name: 'IGN', domain: 'ign.com',
+    category: 'gaming', useProxy: true,
+    rssUrls: ['https://www.ign.com/articles.rss', 'https://feeds.ign.com/ign/all']
+  },
   // --- Железо и софт ---
   wccftech: {
     id: 'wccftech', name: 'WCCFTech', domain: 'wccftech.com',
@@ -332,11 +340,32 @@ const SOURCES = {
     category: 'hardware', useProxy: true,
     rssUrls: ['https://www.techtesters.eu/feed/', 'https://www.techtesters.eu/rss/']
   },
+  techpowerup: {
+    id: 'techpowerup', name: 'TechPowerUp', domain: 'techpowerup.com',
+    category: 'hardware', useProxy: false,
+    rssUrls: ['https://www.techpowerup.com/rss/news']
+  },
+  guru3d: {
+    id: 'guru3d', name: 'Guru3D', domain: 'guru3d.com',
+    category: 'hardware', useProxy: false,
+    rssUrls: ['https://www.guru3d.com/news/rss']
+  },
+  arstechnica_hw: {
+    id: 'arstechnica_hw', name: 'Ars Technica Gadgets', domain: 'arstechnica.com',
+    category: 'hardware', useProxy: false,
+    rssUrls: ['https://feeds.arstechnica.com/arstechnica/gadgets']
+  },
   // --- Обзоры ---
   techtesters_reviews: {
     id: 'techtesters_reviews', name: 'TechTesters Обзоры', domain: 'techtesters.eu',
     category: 'reviews', useProxy: false,
     rssUrls: ['https://www.techtesters.eu/category/z-review/feed/']
+  },
+  // --- Оценки игр ---
+  gamerant: {
+    id: 'gamerant', name: 'Game Rant', domain: 'gamerant.com',
+    category: 'ratings', useProxy: false,
+    rssUrls: ['https://gamerant.com/feed/']
   },
   // --- Фичи и гайды ---
   kotaku: {
@@ -568,9 +597,10 @@ async function startLoad() {
     const isHardware = src.category === 'hardware';
     const isReviews = src.category === 'reviews';
     const isFeatures = src.category === 'features';
+    const isRatings = src.category === 'ratings';
 
     // Для gaming берём 20 записей (просим 20), для остальных — все 40
-    const feedItems = (!isHardware && !isReviews && !isFeatures) ? items.slice(0, 20) : items;
+    const feedItems = (!isHardware && !isReviews && !isFeatures && !isRatings) ? items.slice(0, 20) : items;
     const feedText = feedItems.map((it, i) =>
       `${i+1}. [${it.title}](${it.link})\n${it.desc}`
     ).join('\n\n');
@@ -633,6 +663,26 @@ ${feedText}
     "url": "https://...",
     "relevance": "high|medium|low",
     "game": "Название игры или устройства или null"
+  }
+]`
+      : isRatings
+      ? `Ты — редактор новостного сайта. Проанализируй RSS-ленту и выбери статьи про оценки и рейтинги игр.
+
+RSS-лента (${src.name}):
+${feedText}
+
+Задача: выбери до 20 статей об оценках игр — рецензии, обзоры с баллами, итоговые оценки от критиков (Metacritic, OpenCritic, редакционные оценки), обсуждения рейтингов, спорные оценки. Исключай гайды, новости о патчах без оценок, списки "топ-N" без рецензионного контекста.
+ВАЖНО: в строках JSON не используй символ двойной кавычки " — заменяй на «» или убирай.
+
+Верни ТОЛЬКО JSON-массив без лишнего текста:
+[
+  {
+    "title_en": "...",
+    "title_ru": "Русский заголовок",
+    "desc_ru": "1-2 предложения: название игры, оценка/балл если есть, суть мнения без кавычек",
+    "url": "https://...",
+    "relevance": "high|medium|low",
+    "game": "Название игры или null"
   }
 ]`
       : `Ты — редактор новостного сайта. Проанализируй RSS-ленту и выбери нужные статьи.
@@ -902,6 +952,28 @@ async function writeArticle(key, article) {
 - Длина: 600–900 слов
 - Обращение на "ты"
 - Объясняй технические вещи простым языком
+- Формат: Markdown
+- Не упоминай сайт-источник
+
+Верни ТОЛЬКО текст статьи в Markdown.`
+  : srcCategory === 'ratings' ? `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
+
+МАТЕРИАЛ ОБ ОЦЕНКЕ ИГРЫ:
+Заголовок: ${article.title_en || article.title_ru}
+Описание: ${article.desc_ru || ''}
+Источник: ${article.url}
+
+СТРУКТУРА СТАТЬИ:
+1. Вступительный абзац — о какой игре речь, где и какую оценку получила, почему это интересно
+2. ## Краткое содержание — маркированный список 3-5 ключевых фактов об игре и её оценках
+3. Разделы ## с разбором: что понравилось критикам, что не понравилось, сравнение с ожиданиями игроков
+4. Финальный абзац — стоит ли игра своих оценок, общий вывод
+
+ТРЕБОВАНИЯ:
+- Заголовок H1 — придумай сам, цепляющий, вынеси оценку или интригу в заголовок
+- Длина: 600–900 слов
+- Обращение на "ты", живой эмоциональный язык
+- Указывай конкретные баллы если они есть в тексте
 - Формат: Markdown
 - Не упоминай сайт-источник
 
