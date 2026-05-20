@@ -327,7 +327,11 @@ const SOURCES = {
   ign: {
     id: 'ign', name: 'IGN', domain: 'ign.com',
     category: 'gaming', useProxy: true,
-    rssUrls: ['https://www.ign.com/articles.rss', 'https://feeds.ign.com/ign/all']
+    rssUrls: [
+      'https://www.ign.com/articles.rss',
+      'https://feeds.ign.com/ign/all',
+      'https://news.google.com/rss/search?q=site:ign.com+games&hl=en-US&gl=US&ceid=US:en'
+    ]
   },
   // --- Железо и софт ---
   wccftech: {
@@ -342,18 +346,28 @@ const SOURCES = {
   },
   techpowerup: {
     id: 'techpowerup', name: 'TechPowerUp', domain: 'techpowerup.com',
-    category: 'hardware', useProxy: false,
-    rssUrls: ['https://www.techpowerup.com/rss/news']
+    category: 'hardware', useProxy: true,
+    rssUrls: [
+      'https://www.techpowerup.com/rss/news',
+      'https://news.google.com/rss/search?q=site:techpowerup.com+hardware&hl=en-US&gl=US&ceid=US:en'
+    ]
   },
   guru3d: {
     id: 'guru3d', name: 'Guru3D', domain: 'guru3d.com',
-    category: 'hardware', useProxy: false,
-    rssUrls: ['https://www.guru3d.com/news/rss']
+    category: 'hardware', useProxy: true,
+    rssUrls: [
+      'https://www.guru3d.com/news/rss',
+      'https://news.google.com/rss/search?q=site:guru3d.com&hl=en-US&gl=US&ceid=US:en'
+    ]
   },
   arstechnica_hw: {
-    id: 'arstechnica_hw', name: 'Ars Technica Gadgets', domain: 'arstechnica.com',
-    category: 'hardware', useProxy: false,
-    rssUrls: ['https://feeds.arstechnica.com/arstechnica/gadgets']
+    id: 'arstechnica_hw', name: 'Ars Technica', domain: 'arstechnica.com',
+    category: 'hardware', useProxy: true,
+    rssUrls: [
+      'https://feeds.arstechnica.com/arstechnica/index',
+      'https://feeds.arstechnica.com/arstechnica/gadgets',
+      'https://news.google.com/rss/search?q=site:arstechnica.com+hardware&hl=en-US&gl=US&ceid=US:en'
+    ]
   },
   // --- Обзоры ---
   techtesters_reviews: {
@@ -364,8 +378,11 @@ const SOURCES = {
   // --- Оценки игр ---
   gamerant: {
     id: 'gamerant', name: 'Game Rant', domain: 'gamerant.com',
-    category: 'ratings', useProxy: false,
-    rssUrls: ['https://gamerant.com/feed/']
+    category: 'ratings', useProxy: true,
+    rssUrls: [
+      'https://gamerant.com/feed/',
+      'https://news.google.com/rss/search?q=site:gamerant.com+review+score&hl=en-US&gl=US&ceid=US:en'
+    ]
   },
   // --- Фичи и гайды ---
   kotaku: {
@@ -381,7 +398,10 @@ const SOURCES = {
   screenrant: {
     id: 'screenrant', name: 'Screen Rant', domain: 'screenrant.com',
     category: 'features', useProxy: true,
-    rssUrls: ['https://screenrant.com/feed/']
+    rssUrls: [
+      'https://screenrant.com/feed/',
+      'https://news.google.com/rss/search?q=site:screenrant.com+gaming&hl=en-US&gl=US&ceid=US:en'
+    ]
   },
 };
 
@@ -506,13 +526,13 @@ async function fetchRSS(url) {
 }
 
 async function fetchRSSWithFallback(src) {
-  // Если источник помечен useProxy — сначала пробуем через PHP прокси
-  if (src.useProxy) {
+  // Сначала пробуем все URL через PHP прокси
+  for (const rssUrl of src.rssUrls) {
     try {
       const resp = await fetch(PROXY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'fetch_rss', rss_url: src.rssUrls[0] })
+        body: JSON.stringify({ action: 'fetch_rss', rss_url: rssUrl })
       });
       if (resp.ok) {
         const data = await resp.json();
@@ -522,7 +542,7 @@ async function fetchRSSWithFallback(src) {
       }
     } catch {}
   }
-  // Обычные CORS-прокси
+  // Fallback: публичные CORS-прокси (только если PHP прокси недоступен)
   for (const url of src.rssUrls) {
     try { return await fetchRSS(url); } catch {}
   }
