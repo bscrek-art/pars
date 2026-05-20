@@ -376,12 +376,36 @@ const SOURCES = {
     rssUrls: ['https://www.techtesters.eu/category/z-review/feed/']
   },
   // --- Оценки игр ---
+  gamespot_reviews: {
+    id: 'gamespot_reviews', name: 'GameSpot Обзоры', domain: 'gamespot.com',
+    category: 'ratings', useProxy: true,
+    rssUrls: [
+      'https://www.gamespot.com/feeds/reviews/',
+      'https://news.google.com/rss/search?q=site:gamespot.com+review&hl=en-US&gl=US&ceid=US:en'
+    ]
+  },
+  destructoid: {
+    id: 'destructoid', name: 'Destructoid', domain: 'destructoid.com',
+    category: 'ratings', useProxy: true,
+    rssUrls: [
+      'https://www.destructoid.com/feed/',
+      'https://news.google.com/rss/search?q=site:destructoid.com+review&hl=en-US&gl=US&ceid=US:en'
+    ]
+  },
+  vgc: {
+    id: 'vgc', name: 'VGC', domain: 'videogameschronicle.com',
+    category: 'ratings', useProxy: true,
+    rssUrls: [
+      'https://www.videogameschronicle.com/feed/',
+      'https://news.google.com/rss/search?q=site:videogameschronicle.com+review+score&hl=en-US&gl=US&ceid=US:en'
+    ]
+  },
   gamerant: {
     id: 'gamerant', name: 'Game Rant', domain: 'gamerant.com',
     category: 'ratings', useProxy: true,
     rssUrls: [
-      'https://gamerant.com/feed/',
-      'https://news.google.com/rss/search?q=site:gamerant.com&hl=en-US&gl=US&ceid=US:en'
+      'https://news.google.com/rss/search?q=site:gamerant.com+review+score+metacritic&hl=en-US&gl=US&ceid=US:en',
+      'https://gamerant.com/feed/'
     ]
   },
   // --- Фичи и гайды ---
@@ -552,7 +576,7 @@ async function fetchRSSWithFallback(src) {
 function parseRSS(xml) {
   const doc = new DOMParser().parseFromString(xml, 'text/xml');
   const items = [...doc.querySelectorAll('item, entry')];
-  return items.slice(0, 40).map(item => {
+  return items.slice(0, 20).map(item => {
     // Извлекаем картинку: enclosure > media:content > img в description
     let image = '';
     const enclosure = item.querySelector('enclosure');
