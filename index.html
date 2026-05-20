@@ -376,20 +376,25 @@ const SOURCES = {
     rssUrls: ['https://www.techtesters.eu/category/z-review/feed/']
   },
   // --- Оценки игр ---
-  gamespot_reviews: {
-    id: 'gamespot_reviews', name: 'GameSpot Обзоры', domain: 'gamespot.com',
+  metacritic_news: {
+    id: 'metacritic_news', name: 'Metacritic Новости', domain: 'news.google.com',
     category: 'ratings', useProxy: true,
     rssUrls: [
-      'https://www.gamespot.com/feeds/reviews/',
-      'https://news.google.com/rss/search?q=site:gamespot.com+review&hl=en-US&gl=US&ceid=US:en'
+      'https://news.google.com/rss/search?q=%22metacritic+score%22+game&hl=en-US&gl=US&ceid=US:en'
     ]
   },
-  gamesradar_reviews: {
-    id: 'gamesradar_reviews', name: 'GamesRadar Обзоры', domain: 'gamesradar.com',
+  opencritic_news: {
+    id: 'opencritic_news', name: 'OpenCritic Новости', domain: 'news.google.com',
     category: 'ratings', useProxy: true,
     rssUrls: [
-      'https://www.gamesradar.com/feeds/articletype/review/',
-      'https://news.google.com/rss/search?q=site:gamesradar.com+review&hl=en-US&gl=US&ceid=US:en'
+      'https://news.google.com/rss/search?q=%22opencritic%22+game+score&hl=en-US&gl=US&ceid=US:en'
+    ]
+  },
+  review_scores: {
+    id: 'review_scores', name: 'Оценки рецензий', domain: 'news.google.com',
+    category: 'ratings', useProxy: true,
+    rssUrls: [
+      'https://news.google.com/rss/search?q=game+%22review+score%22+rating+critics&hl=en-US&gl=US&ceid=US:en'
     ]
   },
   // --- Фичи и гайды ---
