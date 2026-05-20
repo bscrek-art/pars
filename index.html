@@ -1,1766 +1,445 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Агент-разведчик · News Scout</title>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap');
-  :root {
-    --bg: #0e0e0f; --surface: #161618; --surface2: #1e1e21;
-    --border: #2a2a2e; --border2: #3a3a3f; --text: #f0f0f2; --muted: #7a7a85;
-    --accent: #00e5a0; --accent-dim: rgba(0,229,160,0.12);
-    --danger: #ff5252; --danger-dim: rgba(255,82,82,0.12);
-    --pending: #ffc947; --pending-dim: rgba(255,201,71,0.1);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.6; }
-  .layout { display: flex; min-height: 100vh; }
-  .sidebar { width: 270px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 10; overflow-y: auto; }
-  .logo { padding: 24px 20px 20px; border-bottom: 1px solid var(--border); }
-  .logo-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--accent); letter-spacing: 0.02em; }
-  .logo-sub { font-size: 11px; color: var(--muted); margin-top: 2px; letter-spacing: 0.04em; text-transform: uppercase; }
-  .sidebar-section { padding: 16px 20px 8px; }
-  .sidebar-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
-  .field-wrap { margin-bottom: 10px; }
-  .field-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 12px; font-family: 'Inter', monospace; outline: none; transition: border-color 0.2s; }
-  .field-input:focus { border-color: var(--accent); }
-  .field-input::placeholder { color: var(--muted); }
-  .save-btn { width: 100%; background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 8px; font-size: 12px; cursor: pointer; transition: all 0.15s; margin-top: 4px; }
-  .save-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .api-status { font-size: 11px; margin-top: 6px; padding: 0 2px; }
-  .api-status.ok { color: var(--accent); }
-  .api-status.err { color: var(--danger); }
-  .load-btn { margin: 12px 20px; width: calc(100% - 40px); background: var(--accent); color: #000; border: none; border-radius: 8px; padding: 11px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-  .load-btn:hover { opacity: 0.9; }
-  .load-btn:active { transform: scale(0.98); }
-  .load-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .stats-grid { padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-  .stat-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
-  .stat-val { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; line-height: 1; }
-  .stat-val.green { color: var(--accent); }
-  .stat-val.red { color: var(--danger); }
-  .stat-val.yellow { color: var(--pending); }
-  .stat-lbl { font-size: 10px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .filter-list { padding: 0 20px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-  .filter-btn { background: none; border: none; color: var(--muted); padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; text-align: left; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
-  .filter-btn:hover { background: var(--surface2); color: var(--text); }
-  .filter-btn.active { background: var(--surface2); color: var(--text); }
-  .filter-btn .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .dot-all { background: var(--muted); } .dot-pending { background: var(--pending); }
-  .dot-take { background: var(--accent); } .dot-skip { background: var(--danger); }
-  .sidebar-bottom { margin-top: auto; padding: 16px 20px; border-top: 1px solid var(--border); }
-  .send-btn { width: 100%; background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 10px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-  .send-btn:hover { background: var(--accent); color: #000; }
-  .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-  .send-btn:disabled:hover { background: var(--accent-dim); color: var(--accent); }
-  .main { margin-left: 270px; flex: 1; padding: 32px; max-width: 900px; }
-  .main-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: var(--text); }
-  .main-sub { color: var(--muted); font-size: 13px; margin-top: 4px; margin-bottom: 24px; }
-  .tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
-  .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); padding: 10px 16px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; margin-bottom: -1px; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-  .tab-btn:hover { color: var(--text); }
-  .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
-  .tab-badge { font-size: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 1px 6px; font-family: 'Inter', sans-serif; font-weight: 500; color: var(--muted); }
-  .tab-btn.active .tab-badge { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-  .tab-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
-  .tab-btn.loaded .tab-dot { background: var(--accent); }
-  .progress-wrap { margin-bottom: 20px; display: none; }
-  .progress-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
-  .progress-bar { height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
-  .progress-inner { height: 100%; background: var(--accent); border-radius: 2px; width: 0%; transition: width 0.4s ease; }
-  .log-wrap { margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; display: none; max-height: 120px; overflow-y: auto; }
-  .log-line { font-size: 11px; color: var(--muted); font-family: monospace; line-height: 1.8; }
-  .log-line.ok { color: var(--accent); } .log-line.err { color: var(--danger); }
-  .article-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; display: flex; gap: 16px; align-items: flex-start; transition: border-color 0.2s, background 0.2s; margin-bottom: 10px; }
-  .article-card:hover { border-color: var(--border2); }
-  .article-card.take { border-color: var(--accent); background: rgba(0,229,160,0.04); }
-  .article-card.skip { border-color: var(--border); opacity: 0.4; }
-  .article-num { font-family: 'Syne', sans-serif; font-size: 11px; color: var(--muted); width: 24px; flex-shrink: 0; padding-top: 2px; text-align: right; }
-  .article-body { flex: 1; min-width: 0; }
-  .article-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; line-height: 1.35; }
-  .article-title-en { font-size: 12px; color: var(--muted); margin-bottom: 8px; line-height: 1.4; font-style: italic; }
-  .article-desc { font-size: 13px; color: #a0a0aa; line-height: 1.55; margin-bottom: 10px; }
-  .article-meta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  .article-link { font-size: 12px; color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 4px; transition: color 0.15s; }
-  .article-link:hover { color: var(--accent); }
-  .relevance { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
-  .relevance.high { background: var(--accent-dim); color: var(--accent); }
-  .relevance.medium { background: var(--pending-dim); color: var(--pending); }
-  .relevance.low { background: rgba(120,120,130,0.15); color: var(--muted); }
-  .article-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
-  .act-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all 0.15s; }
-  .act-btn.take-btn:hover, .act-btn.take-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-  .act-btn.skip-btn:hover, .act-btn.skip-btn.active { background: var(--danger-dim); border-color: var(--danger); color: var(--danger); }
-  .empty { text-align: center; padding: 80px 20px; color: var(--muted); }
-  .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
-  .empty-title { font-family: 'Syne', sans-serif; font-size: 18px; color: var(--text); margin-bottom: 8px; }
-  .empty-desc { font-size: 13px; line-height: 1.6; max-width: 360px; margin: 0 auto; }
-  /* Write stage */
-  .write-view { display: none; }
-  .write-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
-  .back-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
-  .back-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .write-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; }
-  .write-subtitle { font-size: 13px; color: var(--muted); margin-top: 2px; }
-  .write-queue { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
-  .write-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: border-color 0.2s; }
-  .write-item.wi-processing { border-color: var(--pending); }
-  .write-item.wi-done { border-color: var(--accent); }
-  .write-item.wi-error { border-color: var(--danger); }
-  .wi-header { padding: 16px 20px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
-  .wi-status { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; }
-  .wi-status.s-pending { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
-  .wi-status.s-processing { background: var(--pending-dim); color: var(--pending); border: 1px solid var(--pending); animation: spin 1.2s linear infinite; }
-  .wi-status.s-done { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); }
-  .wi-status.s-error { background: var(--danger-dim); color: var(--danger); border: 1px solid var(--danger); }
-  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-  .wi-info { flex: 1; min-width: 0; }
-  .wi-name { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .wi-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .wi-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-  .copy-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .toggle-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
-  .toggle-btn:hover { background: var(--surface2); color: var(--text); }
-  .full-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-  .full-btn:hover { border-color: var(--pending); color: var(--pending); }
-  .full-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .wi-body { display: none; border-top: 1px solid var(--border); padding: 20px; }
-  .wi-body.open { display: block; }
-  .wi-text { font-size: 13px; line-height: 1.75; color: #c0c0cc; font-family: 'Inter', sans-serif; }
-  .wi-text p, .wi-text h2, .wi-text h3, .wi-text h1 { margin-bottom: 10px; }
-  .wi-text h1 { font-size: 16px; font-weight: 700; color: var(--text); }
-  .wi-text h2 { font-size: 14px; font-weight: 600; color: var(--text); }
-  .wi-text h3 { font-size: 13px; font-weight: 600; color: var(--text); }
-  .wi-text ul, .wi-text ol { padding-left: 20px; margin-bottom: 10px; }
-  .wi-text li { margin-bottom: 4px; }
-  .wi-text [data-para]::before { content: attr(data-para); display: inline-block; min-width: 18px; height: 18px; line-height: 18px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; font-size: 9px; color: var(--muted); text-align: center; margin-right: 6px; vertical-align: middle; flex-shrink: 0; font-family: monospace; }
-  /* Image position input */
-  .img-pos-row { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
-  .img-pos-label { font-size: 10px; color: var(--muted); white-space: nowrap; }
-  .img-pos-input { width: 46px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; color: var(--text); font-size: 11px; text-align: center; outline: none; }
-  .img-pos-input:focus { border-color: var(--accent); }
-  .img-pos-input.has-value { border-color: var(--accent); color: var(--accent); }
-  .wi-error-msg { font-size: 13px; color: var(--danger); padding: 16px 20px; border-top: 1px solid var(--border); }
-  .write-copy-all { background: none; border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 10px 20px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
-  .write-copy-all:hover { background: var(--accent); color: #000; }
-  .wi-images { display: flex; gap: 12px; flex-wrap: wrap; padding: 16px 20px 0; }
-  .wi-img-block { display: flex; flex-direction: column; gap: 4px; width: 120px; flex-shrink: 0; }
-  .wi-img-wrap { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); flex-shrink: 0; }
-  .wi-img-wrap img { width: 120px; height: 80px; object-fit: cover; display: block; cursor: pointer; transition: opacity 0.15s; }
-  .wi-img-wrap img:hover { opacity: 0.8; }
-  .wi-img-copy { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: var(--accent); font-size: 10px; text-align: center; padding: 3px; cursor: pointer; opacity: 0; transition: opacity 0.15s; }
-  .wi-img-wrap:hover .wi-img-copy { opacity: 1; }
-  .wi-images-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 12px 20px 4px; }
-  .img-translate-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 4px 10px; font-size: 11px; cursor: pointer; transition: all 0.15s; margin: 4px 0 0 0; display: block; }
-  .img-translate-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .img-translate-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .img-translation { font-size: 12px; color: #c0c0cc; line-height: 1.65; margin-top: 6px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; display: none; white-space: pre-wrap; }
-  /* Image selection for WP */
-  .img-sel-btns { display: flex; gap: 4px; margin-top: 4px; }
-  .img-sel-btn { flex: 1; background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 4px 6px; font-size: 10px; cursor: pointer; transition: all 0.15s; text-align: center; }
-  .img-sel-btn:hover { border-color: var(--border2); color: var(--text); }
-  .img-sel-btn.active-cover { background: rgba(79,138,247,0.15); border-color: #4f8af7; color: #4f8af7; }
-  .img-sel-btn.active-intext { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-  /* WordPress block */
-  .wp-section { padding: 12px 20px; border-top: 1px solid var(--border); }
-  .wp-section .sidebar-label { margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
-  .wp-section .sidebar-label span { color: var(--muted); font-size: 10px; }
-  .wp-fields { display: none; flex-direction: column; gap: 8px; }
-  .wp-fields.open { display: flex; }
-  .wp-status-row { display: flex; gap: 6px; align-items: center; }
-  .wp-select { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; color: var(--text); font-size: 12px; outline: none; cursor: pointer; }
-  .publish-btn { background: none; border: 1px solid #4f8af7; color: #4f8af7; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-  .publish-btn:hover { background: rgba(79,138,247,0.12); }
-  .publish-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  /* CTA panel */
-  .cta-panel { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 12px; background: var(--surface2); border-top: 1px solid var(--border); }
-  .cta-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
-  .cta-select { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; color: var(--text); font-size: 12px; outline: none; cursor: pointer; min-width: 200px; }
-  .cta-select:focus { border-color: var(--accent); }
-  .cta-btn { background: none; border: 1px solid var(--accent); color: var(--accent); border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-  .cta-btn:hover { background: var(--accent); color: #000; }
-  .cta-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  /* Category switcher */
-  .cat-switcher { display: flex; gap: 6px; margin-bottom: 20px; }
-  .cat-btn { background: var(--surface); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 8px 16px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
-  .cat-btn:hover { border-color: var(--border2); color: var(--text); }
-  .cat-btn.active { background: var(--surface2); border-color: var(--accent); color: var(--text); }
-  .cat-btn .cat-icon { font-size: 15px; }
-</style>
-</head>
-<body>
-<div class="layout">
-  <aside class="sidebar">
-    <div class="logo">
-      <div class="logo-title">⬡ Разведчик</div>
-      <div class="logo-sub">News Scout · RSS Edition</div>
-    </div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">Claude API ключ</div>
-      <div class="field-wrap">
-        <input class="field-input" type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off">
-      </div>
-      <button class="save-btn" onclick="saveSettings()">✓ Сохранить ключ</button>
-      <div class="api-status" id="apiStatus"></div>
-    </div>
-    <button class="load-btn" id="loadBtn" onclick="startLoad()" disabled>
-      <span>↻</span>
-      <span id="loadBtnText">Загрузить новости</span>
-    </button>
-    <div class="stats-grid" id="statsGrid" style="display:none;">
-      <div class="stat-box"><div class="stat-val" id="sTotal">0</div><div class="stat-lbl">Всего</div></div>
-      <div class="stat-box"><div class="stat-val green" id="sTake">0</div><div class="stat-lbl">Взять</div></div>
-      <div class="stat-box"><div class="stat-val red" id="sSkip">0</div><div class="stat-lbl">Пропустить</div></div>
-      <div class="stat-box"><div class="stat-val yellow" id="sPending">0</div><div class="stat-lbl">Не решено</div></div>
-    </div>
-    <div class="filter-list" id="filterList" style="display:none;">
-      <button class="filter-btn active" onclick="setFilter('all',this)"><span class="dot dot-all"></span>Все статьи</button>
-      <button class="filter-btn" onclick="setFilter('pending',this)"><span class="dot dot-pending"></span>Не решено</button>
-      <button class="filter-btn" onclick="setFilter('take',this)"><span class="dot dot-take"></span>Взять в работу</button>
-      <button class="filter-btn" onclick="setFilter('skip',this)"><span class="dot dot-skip"></span>Пропустить</button>
-    </div>
-    <div class="wp-section">
-      <div class="sidebar-label" onclick="toggleWpFields()">
-        <span style="color:var(--text);font-size:10px;text-transform:uppercase;letter-spacing:.08em;">WordPress</span>
-        <span id="wpToggleIcon">▼</span>
-      </div>
-      <div class="wp-fields" id="wpFields">
-        <input class="field-input" type="text" id="wpUrl" placeholder="https://yoursite.com" autocomplete="off">
-        <input class="field-input" type="text" id="wpUser" placeholder="Логин пользователя" autocomplete="off">
-        <input class="field-input" type="password" id="wpPass" placeholder="Application Password" autocomplete="off">
-        <div class="wp-status-row">
-          <select class="wp-select" id="wpStatus">
-            <option value="draft">Черновик</option>
-            <option value="publish">Опубликовать</option>
-          </select>
-          <button class="save-btn" style="margin:0;width:auto;padding:8px 12px;" onclick="saveWpSettings()">✓</button>
-        </div>
-        <select class="wp-select" id="wpCategory" style="margin-top:4px;">
-          <option value="">— Рубрика (загрузи настройки) —</option>
-        </select>
-        <div class="api-status" id="wpStatus2"></div>
-      </div>
-    </div>
-    <div class="sidebar-bottom">
-      <button class="send-btn" id="sendBtn" disabled onclick="startWriting()">✦ Написать статьи</button>
-    </div>
-  </aside>
+<?php
+set_time_limit(180);
+ignore_user_abort(false);
 
-  <main class="main">
-    <!-- SCOUT VIEW -->
-    <div id="scoutView">
-      <div class="main-title">News Scout</div>
-      <div class="main-sub" id="mainSub">Введи Claude API ключ слева и нажми «Загрузить новости»</div>
-      <div class="cat-switcher">
-        <button class="cat-btn active" id="cat-gaming" onclick="switchCategory('gaming',this)">
-          <span class="cat-icon">🎮</span>Игровые новости
-        </button>
-        <button class="cat-btn" id="cat-hardware" onclick="switchCategory('hardware',this)">
-          <span class="cat-icon">🖥</span>Железо и софт
-        </button>
-        <button class="cat-btn" id="cat-reviews" onclick="switchCategory('reviews',this)">
-          <span class="cat-icon">⭐</span>Обзоры
-        </button>
-        <button class="cat-btn" id="cat-features" onclick="switchCategory('features',this)">
-          <span class="cat-icon">✦</span>Фичи и гайды
-        </button>
-        <button class="cat-btn" id="cat-ratings" onclick="switchCategory('ratings',this)">
-          <span class="cat-icon">🏆</span>Оценки игр
-        </button>
-      </div>
-      <div class="tabs" id="tabsRow"></div>
-      <div class="progress-wrap" id="progressWrap">
-        <div class="progress-label"><span id="progressLabel">Загружаю...</span><span id="progressPct">0%</span></div>
-        <div class="progress-bar"><div class="progress-inner" id="progressInner"></div></div>
-      </div>
-      <div class="log-wrap" id="logWrap"></div>
-      <div id="articlesContainer">
-        <div class="empty">
-          <div class="empty-icon">◈</div>
-          <div class="empty-title">Статьи ещё не загружены</div>
-          <div class="empty-desc">Введи API ключ слева, выбери вкладку и нажми «Загрузить новости».</div>
-        </div>
-      </div>
-    </div>
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 
-    <!-- WRITE VIEW -->
-    <div class="write-view" id="writeView">
-      <div class="write-header">
-        <button class="back-btn" onclick="backToScout()">← Назад</button>
-        <div>
-          <div class="write-title">Написание статей для Дзена</div>
-          <div class="write-subtitle" id="writeSubtitle">Подготовка...</div>
-        </div>
-      </div>
-      <div class="write-queue" id="writeQueue"></div>
-      <button class="write-copy-all" id="writeCopyAll" style="display:none;" onclick="copyAllWritten()">⎘ Скопировать все статьи</button>
-    </div>
-  </main>
-</div>
-
-<script>
-const PROXY_URL = 'https://akari42.tw1.ru/test/proxy.php';
-
-const SOURCES = {
-  // --- Игровые новости ---
-  pcgamer: {
-    id: 'pcgamer', name: 'PC Gamer', domain: 'pcgamer.com',
-    category: 'gaming', useProxy: true,
-    rssUrls: [
-      'https://www.pcgamer.com/rss/news/',
-      'https://www.pcgamer.com/rss/',
-      'https://news.google.com/rss/search?q=site:pcgamer.com+games&hl=en-US&gl=US&ceid=US:en'
-    ]
-  },
-  insider: {
-    id: 'insider', name: 'Insider Gaming', domain: 'insider-gaming.com',
-    category: 'gaming', useProxy: false,
-    wpApi: 'https://insider-gaming.com',
-    rssUrls: ['https://insider-gaming.com/feed/', 'https://insider-gaming.com/rss/']
-  },
-  ign: {
-    id: 'ign', name: 'IGN', domain: 'ign.com',
-    category: 'gaming', useProxy: true,
-    rssUrls: [
-      'https://www.ign.com/articles.rss',
-      'https://feeds.ign.com/ign/all',
-      'https://news.google.com/rss/search?q=site:ign.com+games&hl=en-US&gl=US&ceid=US:en'
-    ]
-  },
-  // --- Железо и софт ---
-  wccftech: {
-    id: 'wccftech', name: 'WCCFTech', domain: 'wccftech.com',
-    category: 'hardware', useProxy: false,
-    rssUrls: ['https://wccftech.com/feed/']
-  },
-  techtesters: {
-    id: 'techtesters', name: 'TechTesters', domain: 'techtesters.eu',
-    category: 'hardware', useProxy: true,
-    rssUrls: ['https://www.techtesters.eu/feed/', 'https://www.techtesters.eu/rss/']
-  },
-  techpowerup: {
-    id: 'techpowerup', name: 'TechPowerUp', domain: 'techpowerup.com',
-    category: 'hardware', useProxy: true,
-    rssUrls: [
-      'https://www.techpowerup.com/rss/news',
-      'https://news.google.com/rss/search?q=site:techpowerup.com+hardware&hl=en-US&gl=US&ceid=US:en'
-    ]
-  },
-  guru3d: {
-    id: 'guru3d', name: 'Guru3D', domain: 'guru3d.com',
-    category: 'hardware', useProxy: true,
-    rssUrls: [
-      'https://www.guru3d.com/news/rss',
-      'https://news.google.com/rss/search?q=site:guru3d.com&hl=en-US&gl=US&ceid=US:en'
-    ]
-  },
-  arstechnica_hw: {
-    id: 'arstechnica_hw', name: 'Ars Technica', domain: 'arstechnica.com',
-    category: 'hardware', useProxy: true,
-    rssUrls: [
-      'https://feeds.arstechnica.com/arstechnica/index',
-      'https://feeds.arstechnica.com/arstechnica/gadgets',
-      'https://news.google.com/rss/search?q=site:arstechnica.com+hardware&hl=en-US&gl=US&ceid=US:en'
-    ]
-  },
-  // --- Обзоры ---
-  techtesters_reviews: {
-    id: 'techtesters_reviews', name: 'TechTesters Обзоры', domain: 'techtesters.eu',
-    category: 'reviews', useProxy: false,
-    rssUrls: ['https://www.techtesters.eu/category/z-review/feed/']
-  },
-  // --- Оценки игр ---
-  gamerant: {
-    id: 'gamerant', name: 'Game Rant', domain: 'gamerant.com',
-    category: 'ratings', useProxy: true,
-    rssUrls: [
-      'https://gamerant.com/feed/',
-      'https://news.google.com/rss/search?q=site:gamerant.com+review+score&hl=en-US&gl=US&ceid=US:en'
-    ]
-  },
-  // --- Фичи и гайды ---
-  kotaku: {
-    id: 'kotaku', name: 'Kotaku', domain: 'kotaku.com',
-    category: 'features', useProxy: false,
-    rssUrls: ['https://kotaku.com/rss', 'https://kotaku.com/feed']
-  },
-  arstechnica: {
-    id: 'arstechnica', name: 'Ars Technica', domain: 'arstechnica.com',
-    category: 'features', useProxy: false,
-    rssUrls: ['https://feeds.arstechnica.com/arstechnica/gaming']
-  },
-  screenrant: {
-    id: 'screenrant', name: 'Screen Rant', domain: 'screenrant.com',
-    category: 'features', useProxy: true,
-    rssUrls: [
-      'https://screenrant.com/feed/',
-      'https://news.google.com/rss/search?q=site:screenrant.com+gaming&hl=en-US&gl=US&ceid=US:en'
-    ]
-  },
-};
-
-let allArticles = Object.fromEntries(Object.keys(SOURCES).map(k => [k, []]));
-let allDecisions = Object.fromEntries(Object.keys(SOURCES).map(k => [k, {}]));
-let currentCategory = 'gaming';
-let currentTab = 'pcgamer';
-let currentFilter = 'all';
-let writtenTexts = {};
-
-const savedKey = localStorage.getItem('pcg_api_key') || '';
-document.getElementById('apiKey').value = savedKey;
-if (savedKey) { setApiStatus(true); document.getElementById('loadBtn').disabled = false; }
-
-/* ---- CATEGORY SWITCHER ---- */
-function renderTabs() {
-  const row = document.getElementById('tabsRow');
-  const catSources = Object.values(SOURCES).filter(s => s.category === currentCategory);
-  if (!catSources.find(s => s.id === currentTab)) {
-    currentTab = catSources[0].id;
-  }
-  row.innerHTML = catSources.map(src => `
-    <button class="tab-btn ${src.id === currentTab ? 'active' : ''} ${allArticles[src.id].length ? 'loaded' : ''}"
-      id="tab-${src.id}" onclick="switchTab('${src.id}',this)">
-      <span class="tab-dot" id="dot-${src.id}"></span>${src.name}
-      <span class="tab-badge" id="badge-${src.id}">${allArticles[src.id].length || '—'}</span>
-    </button>`).join('');
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
 }
 
-function switchCategory(cat, btn) {
-  currentCategory = cat;
-  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  currentFilter = 'all';
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('.filter-btn').classList.add('active');
-  renderTabs();
-  const has = allArticles[currentTab].length > 0;
-  document.getElementById('statsGrid').style.display = has ? 'grid' : 'none';
-  document.getElementById('filterList').style.display = has ? 'flex' : 'none';
-  renderArticles(); updateStats(); updateLoadBtn();
+// GET: диагностика
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $rssTest = @file_get_contents('https://www.pcgamer.com/rss/news/');
+    echo json_encode([
+        'php'    => phpversion(),
+        'curl'   => function_exists('curl_init') ? 'ok' : 'missing',
+        'rss'    => $rssTest ? 'ok (' . strlen($rssTest) . ' bytes)' : 'failed',
+        'model'  => 'claude-3-5-sonnet-20241022',
+        'status' => 'ok',
+    ]);
+    exit();
 }
 
-renderTabs();
-loadWpSettings();
-
-/* ---- SETTINGS ---- */
-function saveSettings() {
-  const key = document.getElementById('apiKey').value.trim();
-  if (!key.startsWith('sk-ant-')) { setApiStatus(false, 'Ключ должен начинаться с sk-ant-'); return; }
-  localStorage.setItem('pcg_api_key', key);
-  setApiStatus(true);
-  document.getElementById('loadBtn').disabled = false;
-}
-function setApiStatus(ok, msg) {
-  const el = document.getElementById('apiStatus');
-  if (ok) { el.textContent = '✓ Настройки сохранены'; el.className = 'api-status ok'; }
-  else { el.textContent = '✗ ' + (msg || 'Ошибка'); el.className = 'api-status err'; }
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['error' => 'Method not allowed']);
+    exit();
 }
 
-/* ---- TABS ---- */
-function switchTab(tabId, btn) {
-  currentTab = tabId;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  currentFilter = 'all';
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('.filter-btn').classList.add('active');
-  const has = allArticles[currentTab].length > 0;
-  document.getElementById('statsGrid').style.display = has ? 'grid' : 'none';
-  document.getElementById('filterList').style.display = has ? 'flex' : 'none';
-  renderArticles(); updateStats(); updateLoadBtn();
-}
-function updateTabBadge(tabId, count) {
-  const el = document.getElementById('badge-' + tabId);
-  if (el) el.textContent = count === null ? '—' : count;
-  if (count !== null && allArticles[tabId].length) {
-    const tab = document.getElementById('tab-' + tabId);
-    if (tab) tab.classList.add('loaded');
-  }
-}
-function updateLoadBtn() {
-  const src = SOURCES[currentTab];
-  document.getElementById('loadBtnText').textContent =
-    allArticles[currentTab].length > 0 ? `Обновить ${src.name}` : `Загрузить ${src.name}`;
+$input = file_get_contents('php://input');
+$data  = json_decode($input, true);
+
+$apiKey = isset($data['api_key']) ? $data['api_key'] : '';
+$action = isset($data['action']) ? $data['action'] : 'load_news';
+$model  = 'claude-3-5-sonnet-20241022';
+
+/* ================================================================
+   ACTION: fetch_image_b64 — скачать картинку и вернуть base64 (без API ключа)
+   ================================================================ */
+if ($action === 'fetch_image_b64') {
+    $imgUrl = isset($data['url']) ? trim($data['url']) : '';
+    if (!$imgUrl) {
+        http_response_code(400);
+        echo json_encode(['error' => 'url required']);
+        exit();
+    }
+    // Определяем Referer из домена картинки
+    $parsedHost = @parse_url($imgUrl, PHP_URL_HOST);
+    $referer = $parsedHost ? 'https://' . $parsedHost . '/' : '';
+    $ch = curl_init($imgUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_HTTPHEADER     => [
+            'Accept: image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+            'Accept-Language: en-US,en;q=0.9',
+            'Referer: ' . $referer,
+            'Sec-Fetch-Dest: image',
+            'Sec-Fetch-Mode: no-cors',
+            'Sec-Fetch-Site: cross-site',
+        ],
+    ]);
+    $imageData = curl_exec($ch);
+    $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if (!$imageData || $httpCode !== 200) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Не удалось скачать изображение']);
+        exit();
+    }
+    // Определяем mime type
+    if (!$contentType || strpos($contentType, 'image') === false) {
+        $ext = strtolower(pathinfo(parse_url($imgUrl, PHP_URL_PATH), PATHINFO_EXTENSION));
+        $mimeMap = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp', 'gif' => 'image/gif'];
+        $contentType = $mimeMap[$ext] ?? 'image/jpeg';
+    }
+    // Убираем параметры из mime (например "image/jpeg; charset=...")
+    $contentType = explode(';', $contentType)[0];
+    echo json_encode([
+        'b64'      => base64_encode($imageData),
+        'mime'     => $contentType,
+        'filename' => basename(parse_url($imgUrl, PHP_URL_PATH)) ?: 'image.jpg',
+    ]);
+    exit();
 }
 
-/* ---- RSS FETCH ---- */
-async function fetchRSS(url) {
-  const proxies = [
-    async u => {
-      const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(u)}`, { signal: AbortSignal.timeout(10000) });
-      if (!r.ok) throw new Error('bad status');
-      return r.text();
-    },
-    async u => {
-      const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`, { signal: AbortSignal.timeout(10000) });
-      if (!r.ok) throw new Error('bad status');
-      const j = await r.json();
-      return j.contents || '';
-    },
-    async u => {
-      const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`, { signal: AbortSignal.timeout(10000) });
-      if (!r.ok) throw new Error('bad status');
-      return r.text();
-    },
-    async u => {
-      const r = await fetch(`https://thingproxy.freeboard.io/fetch/${encodeURIComponent(u)}`, { signal: AbortSignal.timeout(10000) });
-      if (!r.ok) throw new Error('bad status');
-      return r.text();
-    },
-  ];
-  for (const proxy of proxies) {
-    try {
-      const text = await proxy(url);
-      if (typeof text === 'string' && (text.includes('<rss') || text.includes('<feed') || text.includes('<channel'))) {
-        return text;
-      }
-    } catch {}
-  }
-  throw new Error(`Не удалось загрузить RSS для ${url}`);
+/* ================================================================
+   ACTION: fetch_rss — просто вернуть RSS XML (без API ключа)
+   ================================================================ */
+if ($action === 'fetch_rss') {
+    $rssUrl = isset($data['rss_url']) ? trim($data['rss_url']) : '';
+    if (!$rssUrl) {
+        http_response_code(400);
+        echo json_encode(['error' => 'rss_url required']);
+        exit();
+    }
+    $rssContent = curlFetch($rssUrl);
+    if (!$rssContent) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Не удалось загрузить RSS']);
+        exit();
+    }
+    $trimmed = trim($rssContent);
+    // Проверяем что вернулось RSS/XML, а не HTML-страница
+    $isHtml = (stripos($trimmed, '<html') === 0 || stripos($trimmed, '<!DOCTYPE') === 0);
+    // Проверяем наличие RSS-маркеров
+    $hasRss = (strpos($trimmed, '<rss') !== false || strpos($trimmed, '<feed') !== false
+               || strpos($trimmed, '<channel') !== false || strpos($trimmed, '<?xml') === 0);
+    if ($isHtml || !$hasRss) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Сайт вернул HTML вместо RSS (возможно Cloudflare)']);
+        exit();
+    }
+    echo json_encode(['rss' => $rssContent]);
+    exit();
 }
 
-async function fetchRSSWithFallback(src) {
-  // Сначала пробуем все URL через PHP прокси
-  for (const rssUrl of src.rssUrls) {
-    try {
-      const resp = await fetch(PROXY_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'fetch_rss', rss_url: rssUrl })
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.rss && (data.rss.includes('<rss') || data.rss.includes('<feed') || data.rss.includes('<channel'))) {
-          return data.rss;
+/* ================================================================
+   ACTION: fetch_images — извлечь изображения со страницы (без API ключа)
+   ================================================================ */
+if ($action === 'fetch_images') {
+    $pageUrl = isset($data['url']) ? trim($data['url']) : '';
+    if (!$pageUrl) {
+        http_response_code(400);
+        echo json_encode(['error' => 'url required']);
+        exit();
+    }
+    $html = curlFetch($pageUrl);
+    $images = [];
+    if ($html) {
+        // 1. og:image — приоритет, главная картинка статьи
+        foreach ([
+            '/<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\'][^>]*>/i',
+            '/<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\'][^>]*>/i',
+        ] as $pat) {
+            if (preg_match($pat, $html, $og)) {
+                $ogUrl = html_entity_decode(trim($og[1]));
+                if (strpos($ogUrl, 'http') === 0) { $images[] = $ogUrl; break; }
+            }
         }
-      }
-    } catch {}
-  }
-  // Fallback: публичные CORS-прокси (только если PHP прокси недоступен)
-  for (const url of src.rssUrls) {
-    try { return await fetchRSS(url); } catch {}
-  }
-  throw new Error(`Не удалось загрузить RSS для ${src.name}`);
-}
 
-function parseRSS(xml) {
-  const doc = new DOMParser().parseFromString(xml, 'text/xml');
-  const items = [...doc.querySelectorAll('item, entry')];
-  return items.slice(0, 40).map(item => {
-    // Извлекаем картинку: enclosure > media:content > img в description
-    let image = '';
-    const enclosure = item.querySelector('enclosure');
-    if (enclosure) {
-      const url = enclosure.getAttribute('url') || '';
-      if (/\.(jpg|jpeg|png|webp)/i.test(url) || enclosure.getAttribute('type')?.startsWith('image')) {
-        image = url;
-      }
+        // 2. Ищем картинки в теле статьи (article или main, иначе весь HTML)
+        $zone = $html;
+        if (preg_match('/<article[^>]*>(.*?)<\/article>/is', $html, $m)) $zone = $m[1];
+        elseif (preg_match('/<main[^>]*>(.*?)<\/main>/is', $html, $m)) $zone = $m[1];
+
+        // Находим все <img> теги
+        preg_match_all('/<img[^>]+>/i', $zone, $imgTags);
+        foreach ($imgTags[0] as $imgTag) {
+            // Проверяем lazy-load атрибуты по приоритету, затем src
+            $imgUrl = '';
+            foreach (['data-lazy-src', 'data-src', 'data-original', 'src'] as $attr) {
+                if (preg_match('/' . $attr . '\s*=\s*["\']([^"\']+)["\']/i', $imgTag, $attrM)) {
+                    $candidate = html_entity_decode(trim($attrM[1]));
+                    if (strpos($candidate, 'http') === 0) { $imgUrl = $candidate; break; }
+                }
+            }
+            if (!$imgUrl) continue;
+            // Фильтр мусора: иконки, логотипы, пиксели трекинга
+            if (preg_match('/icon|logo|avatar|sprite|pixel|1x1|\btracking\b/i', $imgUrl)) continue;
+            // Принимаем: обычные расширения ИЛИ WordPress uploads ИЛИ CDN с /image/ в пути
+            if (!preg_match('/\.(jpg|jpeg|png|webp|gif)/i', $imgUrl)
+                && strpos($imgUrl, '/wp-content/uploads/') === false
+                && strpos($imgUrl, '/uploads/') === false
+                && !preg_match('/\/(image|images|media|photo|photos)\//i', $imgUrl)) continue;
+            if (in_array($imgUrl, $images)) continue;
+            $images[] = $imgUrl;
+            if (count($images) >= 5) break;
+        }
     }
-    if (!image) {
-      const media = item.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'content')[0]
-                 || item.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'thumbnail')[0];
-      if (media) image = media.getAttribute('url') || '';
+    echo json_encode(['images' => array_values($images)]);
+    exit();
+}
+
+if (empty($apiKey)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'api_key required']);
+    exit();
+}
+
+/* ================================================================
+   Вспомогательная функция: запрос к Claude API
+   ================================================================ */
+function claudePost($apiKey, $model, $payload, $maxTokens = 2000) {
+    $body = [
+        'model'      => $model,
+        'max_tokens' => $maxTokens,
+        'messages'   => [['role' => 'user', 'content' => $payload]],
+    ];
+
+    $ch = curl_init('https://api.anthropic.com/v1/messages');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode($body),
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'x-api-key: ' . $apiKey,
+            'anthropic-version: 2023-06-01',
+        ],
+        CURLOPT_TIMEOUT        => 120,
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlErr) {
+        http_response_code(500);
+        echo json_encode(['error' => 'cURL error: ' . $curlErr]);
+        exit();
     }
-    if (!image) {
-      const descHtml = item.querySelector('description, summary')?.textContent || '';
-      const imgMatch = descHtml.match(/<img[^>]+src=["']([^"']+\.(?:jpg|jpeg|png|webp))/i);
-      if (imgMatch) image = imgMatch[1];
+
+    if ($httpCode !== 200) {
+        $decoded = json_decode($response, true);
+        $errMsg  = isset($decoded['error']['message']) ? $decoded['error']['message'] : 'HTTP ' . $httpCode;
+        http_response_code($httpCode);
+        echo json_encode(['error' => $errMsg]);
+        exit();
     }
-    // WordPress post-id (для получения featured image через WP REST API)
-    const postIdEl = item.getElementsByTagName('post-id')[0];
-    const postId = postIdEl ? postIdEl.textContent.trim() : '';
-    return {
-      title: item.querySelector('title')?.textContent?.trim() || '',
-      link:  item.querySelector('link')?.textContent?.trim() || item.querySelector('link')?.getAttribute('href') || '',
-      desc:  (item.querySelector('description, summary')?.textContent || '').replace(/<[^>]+>/g, '').slice(0, 300),
-      image,
-      postId,
-    };
-  }).filter(i => i.title);
+
+    http_response_code(200);
+    echo $response;
+    exit();
 }
 
-/* ---- LOAD NEWS ---- */
-async function startLoad() {
-  const key = document.getElementById('apiKey').value.trim();
-  const src = SOURCES[currentTab];
-
-  document.getElementById('loadBtn').disabled = true;
-  document.getElementById('loadBtnText').textContent = 'Загружаю...';
-  document.getElementById('progressWrap').style.display = 'block';
-  document.getElementById('logWrap').style.display = 'block';
-  document.getElementById('statsGrid').style.display = 'none';
-  document.getElementById('filterList').style.display = 'none';
-  allArticles[currentTab] = [];
-  allDecisions[currentTab] = {};
-  renderArticles();
-  updateTabBadge(currentTab, null);
-
-  try {
-    setProgress(10, 'Загружаю RSS...');
-    log(`→ Источник: ${src.name}`);
-
-    const xml = await fetchRSSWithFallback(src);
-    log('✓ RSS получен', 'ok');
-    setProgress(30, 'Парсю RSS...');
-
-    const items = parseRSS(xml);
-    if (!items.length) throw new Error('RSS пустой или не удалось разобрать');
-    log(`✓ ${items.length} записей в RSS`);
-    setProgress(45, 'Отправляю в Claude...');
-
-    const isHardware = src.category === 'hardware';
-    const isReviews = src.category === 'reviews';
-    const isFeatures = src.category === 'features';
-    const isRatings = src.category === 'ratings';
-
-    // Для gaming берём 20 записей (просим 20), для остальных — все 40
-    const feedItems = (!isHardware && !isReviews && !isFeatures && !isRatings) ? items.slice(0, 20) : items;
-    const feedText = feedItems.map((it, i) =>
-      `${i+1}. [${it.title}](${it.link})\n${it.desc}`
-    ).join('\n\n');
-
-    const prompt = isHardware
-      ? `Ты — редактор новостного сайта. Переведи и оформи все записи из RSS-ленты.
-
-RSS-лента (${src.name}):
-${feedText}
-
-Переведи и выбери до 40 записей. Исключай статьи только про игры (анонсы, релизы, геймплей) — оставляй железо, периферию, комплектующие, драйверы, софт, мониторы, ноутбуки и всё что связано с техникой.
-ВАЖНО: в строках JSON не используй символ двойной кавычки " — заменяй на «» или убирай.
-
-Верни ТОЛЬКО JSON-массив без лишнего текста:
-[
-  {
-    "title_en": "оригинальный заголовок",
-    "title_ru": "Русский перевод заголовка",
-    "desc_ru": "1-2 предложения о теме на русском без кавычек",
-    "url": "https://...",
-    "relevance": "high|medium|low",
-    "game": "Модель устройства или null"
-  }
-]`
-      : isReviews
-      ? `Ты — редактор новостного сайта. Переведи и оформи все обзоры из RSS-ленты.
-
-RSS-лента (${src.name}):
-${feedText}
-
-Верни ВСЕ записи (до 40 штук) без фильтрации. Переведи заголовки и описания на русский.
-ВАЖНО: в строках JSON не используй символ двойной кавычки " — заменяй на «» или убирай.
-
-Верни ТОЛЬКО JSON-массив без лишнего текста:
-[
-  {
-    "title_en": "оригинальный заголовок",
-    "title_ru": "Русский перевод заголовка",
-    "desc_ru": "1-2 предложения: что за устройство и общее впечатление без кавычек",
-    "url": "https://...",
-    "relevance": "high|medium|low",
-    "game": "Название устройства или null"
-  }
-]`
-      : isFeatures
-      ? `Ты — редактор новостного сайта. Проанализируй RSS-ленту и выбери интересные материалы.
-
-RSS-лента (${src.name}):
-${feedText}
-
-Задача: выбери до 20 самых интересных фичей, гайдов, списков, сравнений и аналитических материалов. Это могут быть: топ-листы, разборы технологий, истории об актёрах в играх, сравнения железа, гайды по сборке ПК, интересные факты. Исключай обычные новости-однодневки (анонсы, патчи без контекста).
-ВАЖНО: в строках JSON не используй символ двойной кавычки " — заменяй на «» или убирай.
-
-Верни ТОЛЬКО JSON-массив без лишнего текста:
-[
-  {
-    "title_en": "...",
-    "title_ru": "Русский заголовок",
-    "desc_ru": "1-2 предложения о теме без кавычек",
-    "url": "https://...",
-    "relevance": "high|medium|low",
-    "game": "Название игры или устройства или null"
-  }
-]`
-      : isRatings
-      ? `Ты — редактор новостного сайта. Проанализируй RSS-ленту и выбери статьи про оценки и рейтинги игр.
-
-RSS-лента (${src.name}):
-${feedText}
-
-Задача: выбери до 20 статей об оценках игр — рецензии, обзоры с баллами, итоговые оценки от критиков (Metacritic, OpenCritic, редакционные оценки), обсуждения рейтингов, спорные оценки. Исключай гайды, новости о патчах без оценок, списки "топ-N" без рецензионного контекста.
-ВАЖНО: в строках JSON не используй символ двойной кавычки " — заменяй на «» или убирай.
-
-Верни ТОЛЬКО JSON-массив без лишнего текста:
-[
-  {
-    "title_en": "...",
-    "title_ru": "Русский заголовок",
-    "desc_ru": "1-2 предложения: название игры, оценка/балл если есть, суть мнения без кавычек",
-    "url": "https://...",
-    "relevance": "high|medium|low",
-    "game": "Название игры или null"
-  }
-]`
-      : `Ты — редактор новостного сайта. Проанализируй RSS-ленту и выбери нужные статьи.
-
-RSS-лента (${src.name}):
-${feedText}
-
-Задача: выбери до 20 самых интересных статей про игры (новые анонсы, обновления, релизы, геймплей). Исключай статьи про железо, периферию, мониторы.
-
-Верни ТОЛЬКО JSON-массив без лишнего текста:
-[
-  {
-    "title_en": "...",
-    "title_ru": "Русский заголовок",
-    "desc_ru": "1–2 предложения о теме на русском",
-    "url": "https://...",
-    "relevance": "high|medium|low",
-    "game": "Название игры или null"
-  }
-]`;
-
-    const maxTok = 8192;
-    const data = await callClaude(key, prompt, null, maxTok);
-    log('✓ Ответ получен', 'ok');
-    setProgress(85, 'Парсю статьи...');
-
-    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
-    const parsed = parseClaudeJSON(text);
-    if (!parsed) throw new Error('Не удалось разобрать ответ. Попробуй ещё раз.');
-    // Карта URL → { image, postId } из RSS
-    const rssMap = {};
-    items.forEach(it => { if (it.link) rssMap[it.link] = { image: it.image || '', postId: it.postId || '' }; });
-    allArticles[currentTab] = parsed.map((a, i) => ({
-      ...a, id: i + 1, source: currentTab,
-      rssImage: rssMap[a.url]?.image || '',
-      postId:   rssMap[a.url]?.postId || '',
-    }));
-    allArticles[currentTab].forEach(a => { allDecisions[currentTab][a.id] = 'pending'; });
-
-    setProgress(100, 'Готово!');
-    log(`✓ Найдено ${allArticles[currentTab].length} игровых статей`, 'ok');
-
-    setTimeout(() => {
-      document.getElementById('progressWrap').style.display = 'none';
-      document.getElementById('logWrap').style.display = 'none';
-      document.getElementById('statsGrid').style.display = 'grid';
-      document.getElementById('filterList').style.display = 'flex';
-      document.getElementById('mainSub').textContent =
-        `Обновлено только что · ${allArticles[currentTab].length} статей из ${src.name}`;
-      updateTabBadge(currentTab, allArticles[currentTab].length);
-      document.getElementById(`tab-${currentTab}`).classList.add('loaded');
-      renderArticles(); updateStats();
-      document.getElementById('loadBtn').disabled = false;
-      updateLoadBtn();
-    }, 500);
-
-  } catch(e) {
-    log('✗ ' + e.message, 'err');
-    setProgress(0, 'Ошибка');
-    document.getElementById('loadBtn').disabled = false;
-    updateLoadBtn();
-    document.getElementById('articlesContainer').innerHTML = `<div class="empty">
-      <div class="empty-icon">⚠</div>
-      <div class="empty-title">Ошибка загрузки</div>
-      <div class="empty-desc">${esc(e.message)}<br><br>Проверь API ключ и попробуй снова.</div>
-    </div>`;
-  }
+/* ================================================================
+   Вспомогательная функция: загрузить URL через cURL
+   ================================================================ */
+function curlFetch($url) {
+    $parsedHost = @parse_url($url, PHP_URL_HOST);
+    $referer    = $parsedHost ? 'https://' . $parsedHost . '/' : '';
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS      => 5,
+        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_CONNECTTIMEOUT => 15,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_ENCODING       => 'gzip, deflate',
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        CURLOPT_HTTPHEADER     => [
+            'Accept: application/rss+xml, application/xml, text/xml, application/atom+xml, */*;q=0.8',
+            'Accept-Language: en-US,en;q=0.9',
+            'Accept-Encoding: gzip, deflate',
+            'Cache-Control: no-cache',
+            'Pragma: no-cache',
+            'Referer: ' . $referer,
+            'Sec-Fetch-Dest: document',
+            'Sec-Fetch-Mode: navigate',
+            'Sec-Fetch-Site: none',
+            'Upgrade-Insecure-Requests: 1',
+        ],
+    ]);
+    $body = curl_exec($ch);
+    $err  = curl_error($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($err || !$body || $code >= 400) return false;
+    return $body;
 }
 
-/* ---- WRITE STAGE ---- */
-async function startWriting() {
-  const selected = [];
-  Object.keys(SOURCES).forEach(srcId => {
-    allArticles[srcId].filter(a => allDecisions[srcId][a.id] === 'take')
-      .forEach(a => selected.push({ ...a, srcName: SOURCES[srcId].name }));
-  });
-  if (!selected.length) return;
+/* ================================================================
+   ACTION: load_news — загрузить и перевести RSS ленту
+   ================================================================ */
+if ($action === 'load_news') {
 
-  writtenTexts = {};
-  document.getElementById('scoutView').style.display = 'none';
-  document.getElementById('writeView').style.display = 'block';
-  document.getElementById('loadBtn').disabled = true;
-  document.getElementById('writeCopyAll').style.display = 'none';
-  document.getElementById('writeSubtitle').textContent =
-    `Обрабатываю ${selected.length} ${plural(selected.length, 'статью', 'статьи', 'статей')}...`;
+    $source = isset($data['source']) ? $data['source'] : 'pcgamer';
 
-  document.getElementById('writeQueue').innerHTML = selected.map((a, i) => `
-    <div class="write-item" id="wi-${i}">
-      <div class="wi-header" onclick="toggleWiBody(${i})">
-        <div class="wi-status s-pending" id="wis-${i}">○</div>
-        <div class="wi-info">
-          <div class="wi-name">${esc(a.title_ru || a.title_en)}</div>
-          <div class="wi-meta">${esc(a.srcName)}</div>
-        </div>
-        <div class="wi-actions" id="wia-${i}"></div>
-      </div>
-      <div class="wi-body" id="wib-${i}"></div>
-    </div>`).join('');
+    $rssMap = [
+        'pcgamer' => [
+            'https://www.pcgamer.com/rss/news/',
+            'https://www.pcgamer.com/rss/',
+        ],
+        'insider' => [
+            'https://insider-gaming.com/feed/',
+            'https://insider-gaming.com/rss/',
+        ],
+    ];
 
-  const key = document.getElementById('apiKey').value.trim();
+    $rssUrls = isset($rssMap[$source]) ? $rssMap[$source] : $rssMap['pcgamer'];
 
-  for (let i = 0; i < selected.length; i++) {
-    const a = selected[i];
-    setWiStatus(i, 'processing', '↻');
-    imgSelections[i] = { cover: null, inText: new Map() };
-    document.getElementById('writeSubtitle').textContent =
-      `Пишу ${i + 1} из ${selected.length}: ${a.title_ru || a.title_en}`;
-    try {
-      const result = await writeArticle(key, a);
-      writtenTexts[i] = { ...result, article: a };
-      setWiStatus(i, 'done', '✓');
-      document.getElementById(`wi-${i}`).classList.add('wi-done');
-      const body = document.getElementById(`wib-${i}`);
-      let imagesHtml = '';
-      if (result.images && result.images.length) {
-        imagesHtml = `<div class="wi-images-label">Изображения из оригинала</div>
-          <div class="wi-images">${result.images.map((url, ii) => `
-            <div class="wi-img-block" id="imgblock-${i}-${ii}" data-url="${esc(url)}" data-wi="${i}">
-              <div class="wi-img-wrap">
-                <img src="${esc(url)}" alt="img" onerror="this.closest('.wi-img-block').style.display='none'" onclick="window.open('${esc(url)}','_blank')">
-                <div class="wi-img-copy" onclick="copyImgUrl('${esc(url)}',this)">⎘ URL</div>
-              </div>
-              <div class="img-sel-btns">
-                <button class="img-sel-btn cover-trigger" id="cover-btn-${i}-${ii}" data-wi="${i}" data-url="${esc(url)}">📌 Обложка</button>
-              </div>
-              <div class="img-pos-row">
-                <span class="img-pos-label">После абз.:</span>
-                <input type="number" class="img-pos-input img-pos-trigger" min="0" max="999" placeholder="—"
-                  data-wi="${i}" data-url="${esc(url)}" title="Вставить после абзаца №. 0 = в начало">
-              </div>
-              <button class="img-translate-btn translate-trigger" data-url="${esc(url)}" data-out="img-tr-${i}-${ii}">⬡ Перевести текст</button>
-              <div class="img-translation" id="img-tr-${i}-${ii}"></div>
-            </div>`).join('')}
-          </div>`;
-      }
-      const { html: articleHtml, count: paraCount } = renderArticleHtml(result.text);
-      body.innerHTML = imagesHtml + `<div style="padding:16px 20px 20px"><div class="wi-text" id="wi-text-${i}">${articleHtml}</div><div style="font-size:10px;color:var(--muted);margin-top:8px;">Абзацев в статье: ${paraCount}</div></div>`;
-      body.classList.add('open');
-      document.getElementById(`wia-${i}`).innerHTML = `
-        <button class="copy-btn" onclick="copyOne(${i},event)">⎘ Копировать</button>
-        <button class="publish-btn" onclick="publishToWordPress(${i},event)" title="Опубликовать в WordPress">⬆ WordPress</button>
-        <button class="full-btn" onclick="rewriteFull(${i},event)" title="Полный перевод без сокращений">⇄ Полная версия</button>
-        <button class="toggle-btn" onclick="toggleWiBody(${i})">▲</button>
-        <div class="cta-panel">
-          <span class="cta-label">Подводка:</span>
-          <select class="cta-select" id="cta-type-${i}">
-            <option value="">— Без подводки —</option>
-            <option value="gaming">🎮 ПК для этой игры</option>
-            <option value="genre">🕹 ПК для жанра</option>
-            <option value="hardware">🔧 Железо в наших сборках</option>
-            <option value="availability">📦 Уточнить наличие</option>
-            <option value="subscribe">📢 Подписаться на Дзен</option>
-          </select>
-          <button class="cta-btn" id="cta-btn-${i}" onclick="addCta(${i},event)">+ Добавить</button>
-        </div>`;
-    } catch(e) {
-      setWiStatus(i, 'error', '✗');
-      document.getElementById(`wi-${i}`).classList.add('wi-error');
-      document.getElementById(`wib-${i}`).innerHTML =
-        `<div class="wi-error-msg">Ошибка: ${esc(e.message)}</div>`;
-      document.getElementById(`wib-${i}`).classList.add('open');
+    // Пробуем URL-адреса по очереди
+    $rssContent = false;
+    foreach ($rssUrls as $rssUrl) {
+        $rssContent = curlFetch($rssUrl);
+        if ($rssContent) {
+            $trimmed = trim($rssContent);
+            if (stripos($trimmed, '<html') === 0 || stripos($trimmed, '<!DOCTYPE') === 0) {
+                $rssContent = false; // HTML вместо RSS — пробуем следующий
+                continue;
+            }
+            break;
+        }
     }
-  }
 
-  const doneCount = Object.keys(writtenTexts).length;
-  document.getElementById('writeSubtitle').textContent =
-    `Готово · ${doneCount} из ${selected.length} написано`;
-  if (doneCount > 0) document.getElementById('writeCopyAll').style.display = 'flex';
-  document.getElementById('loadBtn').disabled = false;
-}
-
-async function writeArticle(key, article) {
-  // Шаг 1: картинки — из RSS / WP REST API / PHP прокси
-  let images = article.rssImage ? [article.rssImage] : [];
-
-  // Для WordPress-сайтов с wpApi — получаем featured image через REST API
-  const srcConf = SOURCES[article.source];
-  if (!images.length && srcConf?.wpApi && article.postId) {
-    try {
-      const wpResp = await fetch(
-        `${srcConf.wpApi}/wp-json/wp/v2/posts/${article.postId}?_embed&_fields=_embedded`,
-        { signal: AbortSignal.timeout(8000) }
-      );
-      if (wpResp.ok) {
-        const wpData = await wpResp.json();
-        const featImg = wpData?._embedded?.['wp:featuredmedia']?.[0]?.source_url;
-        if (featImg) images.push(featImg);
-      }
-    } catch {}
-  }
-
-  // Fallback: парсим страницу через PHP прокси
-  try {
-    const imgResp = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'fetch_images', url: article.url })
-    });
-    if (imgResp.ok) {
-      const imgData = await imgResp.json();
-      if (Array.isArray(imgData.images)) {
-        imgData.images.forEach(u => { if (!images.includes(u)) images.push(u); });
-      }
+    if (!$rssContent) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Не удалось загрузить RSS ленту. Проверь доступность сайта.']);
+        exit();
     }
-  } catch {}
 
-  // Шаг 2: рерайт через Claude напрямую
-  const srcCategory = SOURCES[article.source]?.category || 'gaming';
-  const prompt = srcCategory === 'features' ? `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
-
-МАТЕРИАЛ ДЛЯ ОБРАБОТКИ:
-Заголовок: ${article.title_en || article.title_ru}
-Описание: ${article.desc_ru || ''}
-Источник: ${article.url}
-
-СТРУКТУРА СТАТЬИ:
-1. Вступительный абзац — цепляющее начало, о чём материал
-2. ## Краткое содержание — маркированный список 3-5 ключевых тезисов
-3. Основная часть — разверни тему в нескольких разделах ## (список, сравнение, разбор — в зависимости от темы)
-4. Финальный абзац — вывод и заключение
-
-ТРЕБОВАНИЯ:
-- Заголовок H1 — придумай сам, цепляющий, интригующий, не переводи дословно с оригинала
-- Длина: 600–900 слов
-- Обращение на "ты", живой увлекательный язык
-- Формат: Markdown
-- Не упоминай сайт-источник
-
-Верни ТОЛЬКО текст статьи в Markdown.`
-  : srcCategory === 'reviews' ? `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
-
-ОБЗОР ДЛЯ ОБРАБОТКИ:
-Заголовок: ${article.title_en || article.title_ru}
-Описание: ${article.desc_ru || ''}
-Источник: ${article.url}
-
-СТРУКТУРА СТАТЬИ:
-1. Вступительный абзац — о чём обзор и почему это интересно
-2. ## Краткое содержание — маркированный список 3-5 ключевых фактов об устройстве
-3. Разделы ## с разбором: характеристики, дизайн, производительность, выводы
-4. Финальный абзац — итоговая оценка и общий вывод
-
-ТРЕБОВАНИЯ:
-- Заголовок H1 — придумай сам, цепляющий, интригующий, не переводи дословно с оригинала
-- Длина: 600–900 слов
-- Обращение на "ты", живой язык
-- Объясняй технические термины простыми словами
-- Формат: Markdown
-- Не упоминай сайт-источник
-
-Верни ТОЛЬКО текст статьи в Markdown.`
-  : srcCategory === 'hardware' ? `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
-
-НОВОСТЬ ДЛЯ ОБРАБОТКИ:
-Заголовок: ${article.title_en || article.title_ru}
-Описание: ${article.desc_ru || ''}
-Источник: ${article.url}
-
-СТРУКТУРА СТАТЬИ:
-1. Вступительный абзац — цепляющее начало, суть новости в 2-3 предложениях
-2. ## Краткое содержание — маркированный список 3-5 ключевых фактов
-3. Несколько разделов ## с техническим разбором (характеристики, что это значит для пользователя, сравнение с конкурентами)
-4. Финальный абзац — вывод и общее заключение
-
-ТРЕБОВАНИЯ:
-- Заголовок H1 — придумай сам, цепляющий, интригующий, не переводи дословно с оригинала
-- Длина: 600–900 слов
-- Обращение на "ты"
-- Объясняй технические вещи простым языком
-- Формат: Markdown
-- Не упоминай сайт-источник
-
-Верни ТОЛЬКО текст статьи в Markdown.`
-  : srcCategory === 'ratings' ? `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
-
-МАТЕРИАЛ ОБ ОЦЕНКЕ ИГРЫ:
-Заголовок: ${article.title_en || article.title_ru}
-Описание: ${article.desc_ru || ''}
-Источник: ${article.url}
-
-СТРУКТУРА СТАТЬИ:
-1. Вступительный абзац — о какой игре речь, где и какую оценку получила, почему это интересно
-2. ## Краткое содержание — маркированный список 3-5 ключевых фактов об игре и её оценках
-3. Разделы ## с разбором: что понравилось критикам, что не понравилось, сравнение с ожиданиями игроков
-4. Финальный абзац — стоит ли игра своих оценок, общий вывод
-
-ТРЕБОВАНИЯ:
-- Заголовок H1 — придумай сам, цепляющий, вынеси оценку или интригу в заголовок
-- Длина: 600–900 слов
-- Обращение на "ты", живой эмоциональный язык
-- Указывай конкретные баллы если они есть в тексте
-- Формат: Markdown
-- Не упоминай сайт-источник
-
-Верни ТОЛЬКО текст статьи в Markdown.`
-  : `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
-
-НОВОСТЬ ДЛЯ ОБРАБОТКИ:
-Заголовок: ${article.title_en || article.title_ru}
-Описание: ${article.desc_ru || ''}
-Источник: ${article.url}
-
-СТРУКТУРА СТАТЬИ (строго соблюдай):
-1. Вступительный абзац — цепляющее начало, суть новости в 2-3 предложениях
-2. ## Краткое содержание — маркированный список 3-5 ключевых фактов
-3. Несколько разделов ## с подробным разбором (2-4 раздела)
-4. Финальный абзац — вывод и заключение без рекламных призывов
-
-ТРЕБОВАНИЯ К ТЕКСТУ:
-- Заголовок H1 — придумай сам, цепляющий, интригующий, не переводи дословно с оригинала
-- Длина: 600–900 слов
-- Обращение к читателю на "ты"
-- Живой, разговорный язык без канцелярщины
-- Формат: Markdown
-- Не упоминай названия сайтов-источников
-- Не добавляй внешних ссылок
-
-Верни ТОЛЬКО текст статьи в Markdown.`;
-
-  const data = await callClaude(key, prompt);  // prompt закрыт выше (тернарный оператор)
-  const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
-  if (!text) throw new Error('Пустой ответ от API');
-
-  return { text, images };
-}
-
-/* ---- JSON PARSER (устойчивый) ---- */
-function parseClaudeJSON(text) {
-  const match = text.match(/\[[\s\S]*\]/);
-  if (!match) return null;
-  let s = match[0];
-  // Попытка 1: прямой парсинг
-  try { return JSON.parse(s); } catch {}
-  // Попытка 2: убираем управляющие символы и trailing commas
-  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-       .replace(/,\s*([\]}])/g, '$1');
-  try { return JSON.parse(s); } catch {}
-  // Попытка 3: построчная сборка — пропускаем строки с ошибками
-  try {
-    const objs = [];
-    const objRegex = /\{[^{}]*\}/gs;
-    let m;
-    while ((m = objRegex.exec(s)) !== null) {
-      try { objs.push(JSON.parse(m[0])); } catch {}
+    // Парсим XML
+    libxml_use_internal_errors(true);
+    $xml = simplexml_load_string($rssContent);
+    if (!$xml) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Ошибка разбора RSS XML']);
+        exit();
     }
-    if (objs.length) return objs;
-  } catch {}
-  return null;
+
+    // Собираем статьи
+    $items = [];
+    $count = 0;
+    foreach ($xml->channel->item as $item) {
+        if ($count >= 20) break;
+        $title = trim((string)$item->title);
+        $link  = trim((string)$item->link) ?: trim((string)$item->guid);
+        $desc  = strip_tags((string)$item->description);
+        $desc  = mb_substr(trim(preg_replace('/\s+/', ' ', $desc)), 0, 400);
+        $items[] = ($count + 1) . ". Title: $title\nDesc: $desc\nURL: $link";
+        $count++;
+    }
+
+    if (empty($items)) {
+        http_response_code(500);
+        echo json_encode(['error' => 'RSS лента пуста']);
+        exit();
+    }
+
+    $articlesList = implode("\n---\n", $items);
+
+    $prompt = "Вот список статей с игрового новостного сайта на английском языке.\n\n"
+        . $articlesList . "\n\n"
+        . "Выбери ТОЛЬКО статьи про игры (без железа, периферии, мониторов и т.п.) и верни JSON массив:\n"
+        . "[{\n"
+        . "  \"title_en\": \"оригинальный заголовок\",\n"
+        . "  \"title_ru\": \"перевод на русский\",\n"
+        . "  \"desc_ru\": \"краткое описание 2-3 предложения\",\n"
+        . "  \"url\": \"ссылка из списка\",\n"
+        . "  \"relevance\": \"high/medium/low\",\n"
+        . "  \"game\": \"название игры или пустая строка\"\n"
+        . "}]\n\n"
+        . "Верни ТОЛЬКО валидный JSON массив без пояснений и markdown.";
+
+    claudePost($apiKey, $model, $prompt, 2000);
 }
 
-/* ---- CLAUDE API ---- */
-async function callClaude(key, prompt, tools, maxTokens = 4096) {
-  const body = {
-    model: 'claude-sonnet-4-5',
-    max_tokens: maxTokens,
-    messages: [{ role: 'user', content: prompt }]
-  };
-  if (tools) body.tools = tools;
+/* ================================================================
+   ACTION: write_article — рерайт статьи для Яндекс Дзен
+   ================================================================ */
+if ($action === 'write_article') {
 
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify(body)
-  });
-  const data = await resp.json();
-  if (data.error) {
-    const msg = typeof data.error === 'string'
-      ? data.error
-      : (data.error.message || data.error.type || JSON.stringify(data.error));
-    throw new Error(msg);
-  }
-  if (!resp.ok) throw new Error('HTTP ' + resp.status);
-  return data;
-}
+    $articleUrl = isset($data['url']) ? trim($data['url']) : '';
+    if (!$articleUrl) {
+        http_response_code(400);
+        echo json_encode(['error' => 'url required']);
+        exit();
+    }
 
-/* ---- IMAGE SELECTION FOR WP ---- */
-// imgSelections[wiIdx] = { cover: url|null, inText: Map<url, paragraphNumber> }
-const imgSelections = {};
+    // Загружаем полный текст статьи
+    $html = curlFetch($articleUrl);
 
-function getImgSel(wiIdx) {
-  if (!imgSelections[wiIdx]) imgSelections[wiIdx] = { cover: null, inText: new Map() };
-  return imgSelections[wiIdx];
-}
-function selectCover(wiIdx, url, btn) {
-  const sel = getImgSel(wiIdx);
-  if (sel.cover === url) {
-    sel.cover = null;
-    btn.classList.remove('active-cover');
-  } else {
-    document.querySelectorAll(`[id^="cover-btn-${wiIdx}-"]`).forEach(b => b.classList.remove('active-cover'));
-    sel.cover = url;
-    btn.classList.add('active-cover');
-  }
-}
-function setImgPosition(wiIdx, url, input) {
-  const sel = getImgSel(wiIdx);
-  const val = input.value.trim();
-  if (val === '' || isNaN(parseInt(val))) {
-    sel.inText.delete(url);
-    input.classList.remove('has-value');
-  } else {
-    sel.inText.set(url, parseInt(val));
-    input.classList.add('has-value');
-  }
-}
+    // Извлекаем изображения
+    $images = [];
+    if ($html) {
+        preg_match_all(
+            '/<img[^>]+src=["\']([^"\']+\.(?:jpg|jpeg|png|webp))(?:\?[^"\']*)?["\'][^>]*>/i',
+            $html, $m
+        );
+        foreach ($m[1] as $imgUrl) {
+            if (strpos($imgUrl, 'http') !== 0) continue;
+            if (stripos($imgUrl, 'icon') !== false) continue;
+            if (stripos($imgUrl, 'logo') !== false) continue;
+            if (stripos($imgUrl, 'avatar') !== false) continue;
+            $images[] = $imgUrl;
+            if (count($images) >= 3) break;
+        }
+    }
 
-/* ---- IMAGE BUTTON EVENT DELEGATION ---- */
-document.addEventListener('click', function(e) {
-  const coverBtn = e.target.closest('.cover-trigger');
-  if (coverBtn) {
-    const wiIdx = parseInt(coverBtn.dataset.wi);
-    const url = coverBtn.dataset.url;
-    selectCover(wiIdx, url, coverBtn);
-  }
-  const transBtn = e.target.closest('.translate-trigger');
-  if (transBtn) {
-    const url = transBtn.dataset.url;
-    const outId = transBtn.dataset.out;
-    translateImage(url, outId, transBtn);
-  }
-});
-document.addEventListener('input', function(e) {
-  if (e.target.classList.contains('img-pos-trigger')) {
-    const input = e.target;
-    const wiIdx = parseInt(input.dataset.wi);
-    const url = input.dataset.url;
-    setImgPosition(wiIdx, url, input);
-  }
-});
+    // Очищаем HTML → текст
+    $pageText = '';
+    if ($html) {
+        $clean    = preg_replace('/<(script|style|nav|footer|header|aside|form)[^>]*>.*?<\/\1>/is', '', $html);
+        $pageText = strip_tags($clean);
+        $pageText = mb_substr(trim(preg_replace('/\s+/', ' ', $pageText)), 0, 8000);
+    }
 
-/* ---- ARTICLE RENDER WITH PARAGRAPH NUMBERS ---- */
-function renderArticleHtml(markdownText) {
-  if (typeof marked === 'undefined') return { html: esc(markdownText), count: 0 };
-  const raw = marked.parse(markdownText);
-  const div = document.createElement('div');
-  div.innerHTML = raw;
-  let num = 0;
-  div.querySelectorAll('p, h1, h2, h3').forEach(el => {
-    num++;
-    el.setAttribute('data-para', num);
-  });
-  return { html: div.innerHTML, count: num };
-}
+    if (!$pageText) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Не удалось загрузить содержимое статьи']);
+        exit();
+    }
 
-function insertImagesIntoHtml(html, inTextMap) {
-  if (!inTextMap.size) return html;
-  const div = document.createElement('div');
-  div.innerHTML = html;
-  // Сортируем по убыванию позиции чтобы вставлять снизу вверх (индексы не смещаются)
-  const sorted = [...inTextMap.entries()].sort((a, b) => b[1] - a[1]);
-  for (const [url, afterPara] of sorted) {
-    const fig = document.createElement('figure');
-    fig.className = 'wp-block-image';
-    fig.innerHTML = `<img src="${url}" alt=""/>`;
-    if (afterPara <= 0) {
-      div.insertBefore(fig, div.firstChild);
+    $imagesHint = !empty($images)
+        ? "\n\nИзображения на странице: " . implode(', ', $images)
+        : '';
+
+    $prompt = "Вот текст статьи с игрового сайта:\n\n"
+        . $pageText . $imagesHint . "\n\n"
+        . "Верни ответ СТРОГО в следующем формате:\n\n"
+        . "IMAGES: [через запятую прямые URL картинок, максимум 3. Если нет — оставь пустым]\n"
+        . "===ARTICLE===\n"
+        . "# Цепляющий заголовок 6-10 слов\n\n"
+        . "Лид-абзац 2-3 предложения\n\n"
+        . "## Подзаголовок\nТекст блока\n\n"
+        . "## Подзаголовок\nТекст блока\n\n"
+        . "## Подзаголовок\nТекст блока\n\n"
+        . "Итоговый абзац с выводом и призывом к обсуждению\n\n"
+        . "Требования:\n"
+        . "- Стиль: живой, вовлекающий, как у популярных русскоязычных игровых блогеров\n"
+        . "- Длина: 600-900 слов\n"
+        . "- Хороший русский язык, без калькирования с английского\n"
+        . "- Не упоминай источник и не делай внешних ссылок";
+
+    // Добавляем изображения в ответ через буферизацию
+    ob_start();
+    claudePost($apiKey, $model, $prompt, 4000);
+    $response = ob_get_clean();
+
+    $decoded = json_decode($response, true);
+    if ($decoded && isset($decoded['content'])) {
+        $decoded['_images'] = $images;
+        echo json_encode($decoded);
     } else {
-      const target = div.querySelector(`[data-para="${afterPara}"]`);
-      if (target) target.after(fig);
-      else div.appendChild(fig);
+        echo $response;
     }
-  }
-  return div.innerHTML;
+    exit();
 }
 
-/* ---- WORDPRESS ---- */
-function toggleWpFields() {
-  const f = document.getElementById('wpFields');
-  const icon = document.getElementById('wpToggleIcon');
-  f.classList.toggle('open');
-  icon.textContent = f.classList.contains('open') ? '▲' : '▼';
-}
-function saveWpSettings() {
-  const url = document.getElementById('wpUrl').value.trim().replace(/\/$/, '');
-  const user = document.getElementById('wpUser').value.trim();
-  const pass = document.getElementById('wpPass').value.trim();
-  if (!url || !user || !pass) {
-    document.getElementById('wpStatus2').textContent = '✗ Заполни все поля';
-    document.getElementById('wpStatus2').style.color = 'var(--danger)';
-    return;
-  }
-  localStorage.setItem('wp_url', url);
-  localStorage.setItem('wp_user', user);
-  localStorage.setItem('wp_pass', pass);
-  document.getElementById('wpStatus2').textContent = '✓ Сохранено, загружаю рубрики...';
-  document.getElementById('wpStatus2').style.color = 'var(--accent)';
-  fetchWpCategories(url, user, pass);
-}
-function loadWpSettings() {
-  const url = localStorage.getItem('wp_url') || '';
-  const user = localStorage.getItem('wp_user') || '';
-  const pass = localStorage.getItem('wp_pass') || '';
-  document.getElementById('wpUrl').value = url;
-  document.getElementById('wpUser').value = user;
-  document.getElementById('wpPass').value = pass;
-  if (url && user && pass) {
-    document.getElementById('wpFields').classList.add('open');
-    document.getElementById('wpToggleIcon').textContent = '▲';
-    document.getElementById('wpStatus2').textContent = '✓ Настройки загружены';
-    document.getElementById('wpStatus2').style.color = 'var(--accent)';
-    fetchWpCategories(url, user, pass);
-  }
-}
-async function fetchWpCategories(url, user, pass) {
-  const sel = document.getElementById('wpCategory');
-  sel.innerHTML = '<option value="">— Загружаю рубрики... —</option>';
-  try {
-    const resp = await fetch(`${url}/wp-json/wp/v2/categories?per_page=100`, {
-      headers: { 'Authorization': `Basic ${btoa(`${user}:${pass}`)}` }
-    });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const cats = await resp.json();
-    const saved = localStorage.getItem('wp_category') || '';
-    sel.innerHTML = '<option value="">— Без рубрики —</option>' +
-      cats.map(c => `<option value="${c.id}" ${String(c.id) === saved ? 'selected' : ''}>${'&nbsp;'.repeat((c.parent ? 2 : 0))}${c.name} (${c.count})</option>`).join('');
-    document.getElementById('wpStatus2').textContent = `✓ Загружено ${cats.length} рубрик`;
-    document.getElementById('wpStatus2').style.color = 'var(--accent)';
-  } catch(e) {
-    sel.innerHTML = '<option value="">— Ошибка загрузки рубрик —</option>';
-    document.getElementById('wpStatus2').textContent = '✗ Не удалось загрузить рубрики: ' + e.message;
-    document.getElementById('wpStatus2').style.color = 'var(--danger)';
-  }
-}
-document.getElementById('wpCategory').addEventListener('change', function() {
-  localStorage.setItem('wp_category', this.value);
-});
-
-async function publishToWordPress(idx, e) {
-  e.stopPropagation();
-  const btn = e.target;
-  const stored = writtenTexts[idx];
-  if (!stored) return;
-
-  const wpUrl  = localStorage.getItem('wp_url');
-  const wpUser = localStorage.getItem('wp_user');
-  const wpPass = localStorage.getItem('wp_pass');
-  if (!wpUrl || !wpUser || !wpPass) {
-    alert('Сначала заполни настройки WordPress в сайдбаре');
-    return;
-  }
-
-  const article = stored.article;
-  const status  = document.getElementById('wpStatus').value;
-
-  // Извлекаем H1 из текста статьи — он станет заголовком поста в WP и RSS
-  const h1Match = stored.text.match(/^#\s+(.+)/m);
-  const title = h1Match ? h1Match[1].trim() : (article.title_ru || article.title_en || 'Без заголовка');
-  // Убираем H1 из тела — WP сам выводит заголовок поста, дублировать не нужно
-  const textWithoutH1 = stored.text.replace(/^#\s+.+\n?/m, '').trimStart();
-  const htmlContent = typeof marked !== 'undefined'
-    ? marked.parse(textWithoutH1)
-    : textWithoutH1.replace(/\n/g, '<br>');
-
-  btn.disabled = true;
-  const credentials = btoa(`${wpUser}:${wpPass}`);
-
-  try {
-    // 1. Загружаем обложку в WP если выбрана
-    let featuredMediaId = 0;
-    const sel = getImgSel(idx);
-    if (sel.cover) {
-      btn.textContent = '↻ Загружаю обложку...';
-      try {
-        featuredMediaId = await uploadImageToWP(sel.cover, wpUrl, credentials);
-      } catch(imgErr) {
-        console.warn('Обложка не загружена:', imgErr.message);
-        // Продолжаем публикацию без обложки
-      }
-    }
-
-    // 2. Загружаем картинки "В текст" на сервер и вставляем по позициям
-    const { html: baseHtml } = renderArticleHtml(textWithoutH1);
-    let finalHtml = baseHtml;
-    if (sel.inText.size > 0) {
-      const inTextEntries = [...sel.inText.entries()];
-      const uploadedMap = new Map();
-      for (let j = 0; j < inTextEntries.length; j++) {
-        const [origUrl, paraNum] = inTextEntries[j];
-        btn.textContent = `↻ Загружаю фото ${j + 1}/${inTextEntries.length}...`;
-        try {
-          const mediaId = await uploadImageToWP(origUrl, wpUrl, credentials);
-          const mediaResp = await fetch(`${wpUrl}/wp-json/wp/v2/media/${mediaId}`, {
-            headers: { 'Authorization': `Basic ${credentials}` }
-          });
-          const mediaData = await mediaResp.json();
-          uploadedMap.set(mediaData.source_url || origUrl, paraNum);
-        } catch {
-          uploadedMap.set(origUrl, paraNum); // fallback
-        }
-      }
-      finalHtml = insertImagesIntoHtml(finalHtml, uploadedMap);
-    }
-
-    // 3. Создаём пост
-    btn.textContent = '↻ Публикую...';
-    const categoryId = document.getElementById('wpCategory').value;
-    const postBody = { title, content: finalHtml, status, format: 'standard' };
-    if (featuredMediaId) postBody.featured_media = featuredMediaId;
-    if (categoryId) postBody.categories = [parseInt(categoryId)];
-
-    const resp = await fetch(`${wpUrl}/wp-json/wp/v2/posts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${credentials}` },
-      body: JSON.stringify(postBody)
-    });
-    const rawText = await resp.text();
-    let data = {};
-    try { data = JSON.parse(rawText); } catch {
-      throw new Error(`Сервер вернул не JSON (HTTP ${resp.status}): ${rawText.slice(0, 200)}`);
-    }
-    if (!resp.ok) throw new Error(data.message || data.error || 'HTTP ' + resp.status);
-
-    const postUrl = data.link || `${wpUrl}/?p=${data.id}`;
-    btn.textContent = '✓ Опубликовано';
-    btn.style.borderColor = 'var(--accent)';
-    btn.style.color = 'var(--accent)';
-    const actionsEl = btn.parentElement;
-    if (!actionsEl.querySelector('.wp-post-link')) {
-      const link = document.createElement('a');
-      link.className = 'wp-post-link';
-      link.href = postUrl;
-      link.target = '_blank';
-      link.textContent = '↗ Открыть';
-      link.style.cssText = 'font-size:12px;color:var(--accent);text-decoration:none;white-space:nowrap;';
-      actionsEl.insertBefore(link, btn.nextSibling);
-    }
-  } catch(err) {
-    btn.textContent = '✗ Ошибка';
-    btn.style.borderColor = 'var(--danger)';
-    btn.style.color = 'var(--danger)';
-    alert('Ошибка публикации: ' + err.message + '\n\nПроверь URL сайта, логин и Application Password.');
-    setTimeout(() => {
-      btn.textContent = '⬆ WordPress';
-      btn.style.borderColor = '';
-      btn.style.color = '';
-      btn.disabled = false;
-    }, 3000);
-  }
-}
-
-async function uploadImageToWP(imageUrl, wpUrl, credentials) {
-  // Скачиваем картинку через PHP прокси (base64)
-  let proxyData;
-  try {
-    const proxyResp = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'fetch_image_b64', url: imageUrl })
-    });
-    proxyData = await proxyResp.json();
-  } catch(e) {
-    throw new Error(`Прокси недоступен для картинки: ${imageUrl.slice(0, 80)}`);
-  }
-  if (proxyData.error || !proxyData.b64) {
-    throw new Error(`Не удалось скачать картинку (${proxyData.error || 'нет данных'}): ${imageUrl.slice(0, 80)}`);
-  }
-
-  // Конвертируем base64 в blob
-  const byteChars = atob(proxyData.b64);
-  const byteArr = new Uint8Array(byteChars.length);
-  for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
-  const blob = new Blob([byteArr], { type: proxyData.mime });
-
-  // Загружаем в WP Media
-  const mediaResp = await fetch(`${wpUrl}/wp-json/wp/v2/media`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${credentials}`,
-      'Content-Disposition': `attachment; filename="${proxyData.filename}"`,
-      'Content-Type': proxyData.mime
-    },
-    body: blob
-  });
-  const mediaRaw = await mediaResp.text();
-  let mediaData = {};
-  try { mediaData = JSON.parse(mediaRaw); } catch {
-    throw new Error(`Медиатека: не JSON (HTTP ${mediaResp.status}): ${mediaRaw.slice(0, 200)}`);
-  }
-  if (!mediaResp.ok) throw new Error('Ошибка загрузки в медиатеку: ' + (mediaData.message || mediaResp.status));
-  return mediaData.id;
-}
-
-/* ---- CTA (ПОДВОДКА) ---- */
-const PC_LINEUPS = `Линейка ОКСИГЕН (игровые ПК с подсветкой):
-- Оксиген III — Full HD-гейминг без переплат (бюджетный)
-- Оксиген V — баланс цены и мощности для Full HD и начала 2K
-- Оксиген V+ — уверенный 2K-гейминг без переплат
-- Оксиген VII — ультимативный 2K и комфортный 4K
-- Оксиген IX — флагман для топового 4K
-
-Линейка КВАРЦ (настольные игровые ПК, элегантный дизайн):
-- Кварц III — красивый ПК для Full HD
-- Кварц V — элегантность + мощность для Full HD и 2K
-- Кварц V+ — стильный 2K-гейминг
-- Кварц VII — роскошный 2K / комфортный 4K
-- Кварц IX — элегантный флагман для 4K`;
-
-async function addCta(idx, e) {
-  e.stopPropagation();
-  const key = document.getElementById('apiKey').value.trim();
-  if (!key) { alert('Введи API ключ'); return; }
-  const type = document.getElementById(`cta-type-${idx}`).value;
-  if (!type) { alert('Выбери тип подводки'); return; }
-
-  const stored = writtenTexts[idx];
-  if (!stored) return;
-
-  const btn = document.getElementById(`cta-btn-${idx}`);
-  btn.disabled = true;
-  btn.textContent = '↻ Пишу...';
-
-  try {
-    const articleSnippet = stored.text.slice(0, 900);
-    let prompt = '';
-
-    const CATALOG_LINK = '[каталоге](https://kometapc.ru/)';
-
-    if (type === 'gaming') {
-      prompt = `Ты — копирайтер магазина игровых ПК "Комета ПК".
-
-Статья об игре:
----
-${articleSnippet}
----
-
-Каталог ПК:
-${PC_LINEUPS}
-
-Напиши 1-2 предложения: выбери ОДНУ наиболее подходящую линейку исходя из жанра/графики/требований игры, укажи её название и объясни почему она подойдёт (FPS, разрешение). Упомяни "Комета ПК" как название магазина.
-НЕ упоминай URL и ссылки. Только текст.
-Верни ТОЛЬКО текст, без заголовков.`;
-
-    } else if (type === 'genre') {
-      prompt = `Ты — копирайтер магазина игровых ПК "Комета ПК".
-
-Статья (гайд, топ или обзор игр жанра):
----
-${articleSnippet}
----
-
-Каталог ПК:
-${PC_LINEUPS}
-
-Напиши 1-2 предложения: определи жанр игр из статьи, выбери ОДНУ подходящую линейку и объясни почему она закрывает потребности любителей этого жанра. Упомяни "Комета ПК" как название магазина.
-НЕ упоминай URL и ссылки. Только текст.
-Верни ТОЛЬКО текст, без заголовков.`;
-
-    } else if (type === 'hardware') {
-      prompt = `Ты — копирайтер магазина игровых ПК "Комета ПК".
-
-Статья о железе (процессор, видеокарта и т.п.):
----
-${articleSnippet}
----
-
-Каталог ПК:
-${PC_LINEUPS}
-
-Напиши 1-2 предложения: скажи что это железо используется в наших сборках, выбери ОДНУ линейку где оно актуально, и предложи рассмотреть готовый ПК вместо самостоятельной сборки. Упомяни "Комета ПК" как название магазина.
-НЕ упоминай URL и ссылки. Только текст.
-Верни ТОЛЬКО текст, без заголовков.`;
-
-    } else if (type === 'availability') {
-      prompt = `Ты — копирайтер магазина игровых ПК "Комета ПК".
-
-Статья о технике или комплектующих:
----
-${articleSnippet}
----
-
-Напиши 1-2 предложения: предложи уточнить наличие и цену этого товара у менеджеров Комета ПК. Пиши дружелюбно.
-НЕ упоминай URL и ссылки. Только текст.
-Верни ТОЛЬКО текст, без заголовков.`;
-
-    } else if (type === 'subscribe') {
-      prompt = `Ты — копирайтер магазина игровых ПК "Комета ПК".
-
-Статья:
----
-${articleSnippet}
----
-
-Напиши 1-2 предложения с призывом подписаться на канал Комета ПК в Яндекс Дзен чтобы быть в курсе игровых новостей.
-НЕ упоминай URL и ссылки. Пиши тепло.
-Верни ТОЛЬКО текст, без заголовков.`;
-    }
-
-    const result = await callClaude(key, prompt, null, 400);
-    let ctaText = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
-
-    // Добавляем ссылку программно — гарантированно правильный формат
-    if (type === 'gaming' || type === 'genre' || type === 'hardware') {
-      ctaText += ` Посмотреть конфигурации можно в ${CATALOG_LINK} Комета ПК — менеджеры помогут подобрать вариант под твой бюджет.`;
-    } else if (type === 'availability') {
-      ctaText += ` Узнать наличие и цену можно в ${CATALOG_LINK} Комета ПК.`;
-    }
-
-    // Добавляем подводку к тексту статьи
-    stored.text = stored.text.trimEnd() + '\n\n---\n\n' + ctaText;
-
-    // Перерисовываем текст статьи
-    const body = document.getElementById(`wib-${idx}`);
-    const imagesSection = body.querySelector('.wi-images-label');
-    const imagesHtml = imagesSection ? body.innerHTML.split('<div style=')[0] : '';
-    const { html: articleHtml, count: paraCount } = renderArticleHtml(stored.text);
-    body.innerHTML = imagesHtml + `<div style="padding:16px 20px 20px"><div class="wi-text" id="wi-text-${idx}">${articleHtml}</div><div style="font-size:10px;color:var(--muted);margin-top:8px;">Абзацев в статье: ${paraCount}</div></div>`;
-
-    btn.textContent = '✓ Добавлено';
-    btn.style.borderColor = 'var(--accent)';
-    setTimeout(() => {
-      btn.textContent = '+ Добавить';
-      btn.style.borderColor = '';
-      btn.disabled = false;
-    }, 2000);
-
-  } catch(err) {
-    btn.textContent = '✗ Ошибка';
-    btn.disabled = false;
-    alert('Ошибка генерации подводки: ' + err.message);
-  }
-}
-
-/* ---- IMAGE TRANSLATE ---- */
-async function translateImage(imageUrl, outputId, btn) {
-  const key = document.getElementById('apiKey').value.trim();
-  const output = document.getElementById(outputId);
-  btn.disabled = true;
-  btn.textContent = '↻ Читаю изображение...';
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 2048,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'url', url: imageUrl } },
-            { type: 'text', text: `Переведи весь текст с этого изображения на русский язык.
-Правила:
-- Названия продуктов, модели, аббревиатуры (GPU, CPU, FPS, RTX и т.п.) оставляй как есть
-- Сохраняй структуру таблиц, списков и колонок
-- Числа и единицы измерения не меняй
-- Если текста нет или изображение декоративное — напиши: "Текст на изображении отсутствует"
-Верни ТОЛЬКО переведённый текст, без пояснений.` }
-          ]
-        }]
-      })
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message || 'Ошибка API');
-    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
-    output.textContent = text;
-    output.style.display = 'block';
-    btn.textContent = '✓ Перевод готов';
-    btn.style.borderColor = 'var(--accent)';
-    btn.style.color = 'var(--accent)';
-  } catch(e) {
-    output.textContent = 'Ошибка: ' + e.message;
-    output.style.display = 'block';
-    btn.textContent = '✗ Ошибка';
-    btn.disabled = false;
-  }
-}
-
-/* ---- FULL REWRITE ---- */
-async function rewriteFull(idx, e) {
-  e.stopPropagation();
-  const btn = e.target;
-  const stored = writtenTexts[idx];
-  if (!stored) return;
-  const article = stored.article;
-  const key = document.getElementById('apiKey').value.trim();
-
-  btn.disabled = true;
-  btn.textContent = '↻ Перевожу...';
-  setWiStatus(idx, 'processing', '↻');
-  imgSelections[idx] = { cover: null, inText: new Map() };
-
-  try {
-    const prompt = `Ты — профессиональный переводчик и редактор для Яндекс Дзен, работаешь для магазина игровых ПК.
-
-ЗАДАЧА: Сделай полный перевод и адаптацию статьи на русский язык, сохраняя весь объём и структуру оригинала. Ничего не сокращай.
-
-Заголовок: ${article.title_en || article.title_ru}
-Описание: ${article.desc_ru || ''}
-URL оригинала: ${article.url}
-
-ТРЕБОВАНИЯ:
-- Заголовок H1 — придумай сам, цепляющий, не переводи дословно с оригинала
-- Переведи максимально полно, сохраняя все детали, цифры, цитаты и структуру оригинала
-- Обращение на "ты", живой русский язык без дословного калькирования
-- Формат: Markdown с заголовками
-- Не упоминай сайт-источник
-
-Верни ТОЛЬКО текст статьи в Markdown.`;
-
-    const data = await callClaude(key, prompt, null, 8192);
-    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
-    if (!text) throw new Error('Пустой ответ');
-
-    writtenTexts[idx] = { ...stored, text };
-    setWiStatus(idx, 'done', '✓');
-
-    const body = document.getElementById(`wib-${idx}`);
-    const imagesHtml = body.querySelector('.wi-images')
-      ? body.innerHTML.split('<div style=')[0]
-      : '';
-    body.innerHTML = imagesHtml + `<div style="padding:16px 20px 20px"><div class="wi-text">${esc(text)}</div></div>`;
-    body.classList.add('open');
-
-    btn.textContent = '✓ Готово';
-    setTimeout(() => { btn.textContent = '⇄ Полная версия'; btn.disabled = false; }, 2000);
-  } catch(err) {
-    setWiStatus(idx, 'done', '✓');
-    btn.textContent = '✗ Ошибка';
-    setTimeout(() => { btn.textContent = '⇄ Полная версия'; btn.disabled = false; }, 2000);
-  }
-}
-
-/* ---- BACK ---- */
-function backToScout() {
-  document.getElementById('writeView').style.display = 'none';
-  document.getElementById('scoutView').style.display = 'block';
-  updateLoadBtn();
-}
-
-/* ---- COPY ---- */
-function copyOne(idx, e) {
-  e.stopPropagation();
-  const result = writtenTexts[idx];
-  navigator.clipboard.writeText(result?.text || result || '');
-  const btn = e.target;
-  btn.textContent = '✓ Скопировано';
-  setTimeout(() => btn.textContent = '⎘ Копировать', 2000);
-}
-function copyAllWritten() {
-  const all = Object.values(writtenTexts).map(r => r?.text || r).join('\n\n---\n\n');
-  navigator.clipboard.writeText(all);
-  const btn = document.getElementById('writeCopyAll');
-  btn.textContent = '✓ Скопировано!';
-  setTimeout(() => btn.textContent = '⎘ Скопировать все статьи', 2000);
-}
-function copyImgUrl(url, el) {
-  navigator.clipboard.writeText(url);
-  el.textContent = '✓ Скопировано';
-  setTimeout(() => el.textContent = '⎘ URL', 2000);
-}
-
-/* ---- UI HELPERS ---- */
-function setWiStatus(i, cls, icon) {
-  const el = document.getElementById(`wis-${i}`);
-  el.className = `wi-status s-${cls}`;
-  el.textContent = icon;
-}
-function toggleWiBody(i) {
-  const body = document.getElementById(`wib-${i}`);
-  const btn = document.querySelector(`#wia-${i} .toggle-btn`);
-  body.classList.toggle('open');
-  if (btn) btn.textContent = body.classList.contains('open') ? '▲' : '▼';
-}
-function setProgress(pct, label) {
-  document.getElementById('progressInner').style.width = pct + '%';
-  document.getElementById('progressLabel').textContent = label;
-  document.getElementById('progressPct').textContent = Math.round(pct) + '%';
-}
-function log(msg, type) {
-  const wrap = document.getElementById('logWrap');
-  const line = document.createElement('div');
-  line.className = 'log-line' + (type ? ' ' + type : '');
-  line.textContent = new Date().toLocaleTimeString('ru') + ' ' + msg;
-  wrap.appendChild(line);
-  wrap.scrollTop = wrap.scrollHeight;
-}
-function esc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function plural(n, one, few, many) {
-  const m = n % 10, h = n % 100;
-  if (m === 1 && h !== 11) return one;
-  if (m >= 2 && m <= 4 && (h < 10 || h >= 20)) return few;
-  return many;
-}
-
-/* ---- DECIDE / STATS / FILTER / RENDER ---- */
-function decide(id, action) {
-  allDecisions[currentTab][id] = allDecisions[currentTab][id] === action ? 'pending' : action;
-  renderArticles(); updateStats();
-}
-function updateStats() {
-  const d = allDecisions[currentTab];
-  const a = allArticles[currentTab];
-  document.getElementById('sTotal').textContent = a.length;
-  document.getElementById('sTake').textContent = Object.values(d).filter(x => x === 'take').length;
-  document.getElementById('sSkip').textContent = Object.values(d).filter(x => x === 'skip').length;
-  document.getElementById('sPending').textContent = Object.values(d).filter(x => x === 'pending').length;
-  const total = Object.keys(allDecisions).reduce((s, k) =>
-    s + Object.values(allDecisions[k]).filter(x => x === 'take').length, 0);
-  const btn = document.getElementById('sendBtn');
-  btn.disabled = total === 0;
-  btn.textContent = total > 0 ? `✦ Написать статьи (${total})` : '✦ Написать статьи';
-}
-function setFilter(f, btn) {
-  currentFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderArticles();
-}
-function renderArticles() {
-  const container = document.getElementById('articlesContainer');
-  const articles = allArticles[currentTab];
-  const decisions = allDecisions[currentTab];
-  const src = SOURCES[currentTab];
-  const list = articles.filter(a => currentFilter === 'all' || decisions[a.id] === currentFilter);
-
-  if (!articles.length) {
-    container.innerHTML = `<div class="empty"><div class="empty-icon">◈</div><div class="empty-title">Статьи ещё не загружены</div><div class="empty-desc">Нажми «Загрузить ${src.name}».</div></div>`;
-    return;
-  }
-  if (!list.length) {
-    container.innerHTML = `<div class="empty"><div class="empty-icon">◌</div><div class="empty-title">Нет статей в этой категории</div><div class="empty-desc">Переключи фильтр.</div></div>`;
-    return;
-  }
-  container.innerHTML = list.map(a => {
-    const dec = decisions[a.id];
-    const relClass = {high:'high',medium:'medium',low:'low'}[a.relevance] || 'low';
-    const relLabel = {high:'🔥 Топ',medium:'· Интересно',low:'· Обычное'}[a.relevance] || '· Обычное';
-    return `<div class="article-card ${dec==='take'?'take':dec==='skip'?'skip':''}">
-      <div class="article-num">${a.id}</div>
-      <div class="article-body">
-        <div class="article-title">${esc(a.title_ru || a.title_en)}</div>
-        ${a.title_en ? `<div class="article-title-en">${esc(a.title_en)}</div>` : ''}
-        <div class="article-desc">${esc(a.desc_ru || '')}</div>
-        <div class="article-meta">
-          <span class="relevance ${relClass}">${relLabel}</span>
-          ${a.game ? `<span style="font-size:11px;color:var(--muted)">🎮 ${esc(a.game)}</span>` : ''}
-          ${a.url ? `<a class="article-link" href="${esc(a.url)}" target="_blank" rel="noopener">↗ ${src.domain}</a>` : ''}
-        </div>
-      </div>
-      <div class="article-actions">
-        <button class="act-btn take-btn ${dec==='take'?'active':''}" onclick="decide(${a.id},'take')" title="Взять в работу">✓</button>
-        <button class="act-btn skip-btn ${dec==='skip'?'active':''}" onclick="decide(${a.id},'skip')" title="Пропустить">✕</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-</script>
-</body>
-</html>
+http_response_code(400);
+echo json_encode(['error' => 'Unknown action: ' . $action]);
