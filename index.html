@@ -187,11 +187,61 @@
   .cta-btn:hover { background: var(--accent); color: #000; }
   .cta-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   /* Category switcher */
-  .cat-switcher { display: flex; gap: 6px; margin-bottom: 20px; }
+  .cat-switcher { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
   .cat-btn { background: var(--surface); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 8px 16px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
   .cat-btn:hover { border-color: var(--border2); color: var(--text); }
   .cat-btn.active { background: var(--surface2); border-color: var(--accent); color: var(--text); }
   .cat-btn .cat-icon { font-size: 15px; }
+  /* SEO Articles tab */
+  .seo-wrap { display: none; }
+  .seo-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px 24px; margin-bottom: 18px; }
+  .seo-card-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .seo-card-sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.55; }
+  .seo-textarea { width: 100%; min-height: 110px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; color: var(--text); font-size: 13px; font-family: 'Inter', sans-serif; line-height: 1.55; outline: none; resize: vertical; transition: border-color 0.2s; }
+  .seo-textarea:focus { border-color: var(--accent); }
+  .seo-textarea::placeholder { color: var(--muted); }
+  .seo-row { display: flex; gap: 12px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  .seo-len-wrap { display: flex; align-items: center; gap: 8px; }
+  .seo-len-label { font-size: 12px; color: var(--muted); }
+  .seo-len-input { width: 90px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; color: var(--text); font-size: 12px; outline: none; font-family: 'Inter', sans-serif; }
+  .seo-len-input:focus { border-color: var(--accent); }
+  .seo-gen-btn { background: var(--accent); color: #000; border: none; border-radius: 8px; padding: 10px 22px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.1s; display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .seo-gen-btn:hover { opacity: 0.9; }
+  .seo-gen-btn:active { transform: scale(0.98); }
+  .seo-gen-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .seo-progress { display: none; padding: 12px 16px; background: var(--surface2); border: 1px solid var(--pending); border-radius: 8px; margin-bottom: 16px; }
+  .seo-progress-label { font-size: 12px; color: var(--pending); display: flex; align-items: center; gap: 8px; }
+  .seo-progress-spin { display: inline-block; animation: spin 1.2s linear infinite; }
+  .seo-result { display: none; }
+  .seo-result-header { display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: var(--surface2); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .seo-result-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: var(--text); flex: 1; min-width: 0; word-break: break-word; }
+  .seo-result-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .seo-result-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .seo-result-body { padding: 20px 24px 28px; max-height: 60vh; overflow-y: auto; }
+  .seo-result-body .wi-text { font-size: 14px; line-height: 1.75; color: #d0d0d8; }
+  .seo-result-body .wi-text h1 { font-size: 22px; font-weight: 700; color: var(--text); margin: 10px 0 18px; line-height: 1.3; }
+  .seo-result-body .wi-text h2 { font-size: 18px; font-weight: 700; color: var(--text); margin: 26px 0 12px; line-height: 1.35; }
+  .seo-result-body .wi-text h3 { font-size: 15px; font-weight: 600; color: var(--text); margin: 18px 0 10px; }
+  .seo-result-body .wi-text p { margin-bottom: 12px; }
+  .seo-result-body .wi-text ul, .seo-result-body .wi-text ol { padding-left: 24px; margin-bottom: 14px; }
+  .seo-result-body .wi-text li { margin-bottom: 6px; }
+  .seo-result-body .wi-text blockquote { background: var(--surface2); border-left: 3px solid var(--accent); padding: 12px 16px; margin: 14px 0; border-radius: 4px; color: #c0c0cc; }
+  .seo-result-body .wi-text blockquote p:last-child { margin-bottom: 0; }
+  .seo-result-body .wi-text a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(0,229,160,0.3); }
+  .seo-result-body .wi-text a:hover { border-bottom-color: var(--accent); }
+  .seo-result-body .wi-text strong { color: var(--text); }
+  .seo-result-body .wi-text code { background: var(--surface2); padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--accent); }
+  .seo-result-body .wi-text hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  .seo-title-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; color: var(--text); font-size: 13px; font-family: 'Inter', sans-serif; outline: none; }
+  .seo-title-input:focus { border-color: var(--accent); }
+  .seo-history { margin-top: 20px; }
+  .seo-history-title { font-family: 'Syne', sans-serif; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+  .seo-history-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: border-color 0.15s; }
+  .seo-history-item:hover { border-color: var(--accent); }
+  .seo-history-text { flex: 1; min-width: 0; font-size: 12px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .seo-history-date { font-size: 10px; color: var(--muted); white-space: nowrap; }
+  .seo-history-del { background: none; border: none; color: var(--muted); cursor: pointer; padding: 2px 6px; font-size: 14px; border-radius: 4px; transition: all 0.15s; }
+  .seo-history-del:hover { color: var(--danger); background: var(--danger-dim); }
 </style>
 </head>
 <body>
@@ -273,7 +323,60 @@
         <button class="cat-btn" id="cat-ratings" onclick="switchCategory('ratings',this)">
           <span class="cat-icon">🏆</span>Оценки игр
         </button>
+        <button class="cat-btn" id="cat-seo" onclick="switchCategory('seo',this)">
+          <span class="cat-icon">✍</span>Экспертные статьи
+        </button>
       </div>
+
+      <!-- SEO ARTICLES BLOCK -->
+      <div class="seo-wrap" id="seoWrap">
+        <div class="seo-card">
+          <div class="seo-card-title">Экспертная статья от лица Комета ПК</div>
+          <div class="seo-card-sub">
+            Опиши тему статьи — Claude напишет развёрнутый материал в фирменном стиле:
+            тон от компании, опора на 12-летний опыт сборки, бренды только у видеокарт и процессоров,
+            живые детали из практики, блоки ⚠️/💡, FAQ-секция, сноска про актуальность цен,
+            CTA-блоки со ссылкой на kometapc.ru. Объём 12–15 тыс. знаков.
+          </div>
+          <textarea id="seoTopic" class="seo-textarea" placeholder="Например: Как выбрать игровой ПК для Cyberpunk 2077 в 2026 году — 5 готовых сборок на RTX 50&#10;&#10;Или: Бюджетный игровой ПК до 100 тысяч — реальные сборки с тестами FPS&#10;&#10;Или: Полное руководство по апгрейду старого ПК — что менять в первую очередь"></textarea>
+          <div class="seo-row">
+            <div class="seo-len-wrap">
+              <span class="seo-len-label">Объём (знаков):</span>
+              <input type="number" id="seoLength" class="seo-len-input" value="14000" min="8000" max="20000" step="500">
+            </div>
+            <button class="seo-gen-btn" id="seoGenBtn" onclick="generateSeoArticle()">
+              <span>✦</span>
+              <span id="seoGenBtnText">Написать статью</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="seo-progress" id="seoProgress">
+          <div class="seo-progress-label">
+            <span class="seo-progress-spin">↻</span>
+            <span id="seoProgressText">Пишу статью... это займёт 1–2 минуты</span>
+          </div>
+        </div>
+
+        <div class="write-item seo-result" id="seoResult">
+          <div class="seo-result-header">
+            <div style="flex:1;min-width:0;">
+              <div class="seo-result-title" id="seoResultTitle">Заголовок статьи</div>
+              <div class="seo-result-meta" id="seoResultMeta">—</div>
+            </div>
+            <div class="seo-result-actions" id="seoResultActions"></div>
+          </div>
+          <div class="seo-result-body">
+            <div class="wi-text" id="seoResultText"></div>
+          </div>
+        </div>
+
+        <div class="seo-history" id="seoHistory" style="display:none;">
+          <div class="seo-history-title">Последние сгенерированные статьи</div>
+          <div id="seoHistoryList"></div>
+        </div>
+      </div>
+
       <div class="tabs" id="tabsRow"></div>
       <div class="progress-wrap" id="progressWrap">
         <div class="progress-label"><span id="progressLabel">Загружаю...</span><span id="progressPct">0%</span></div>
@@ -460,6 +563,25 @@ function switchCategory(cat, btn) {
   currentCategory = cat;
   document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+
+  const isSeo = cat === 'seo';
+  document.getElementById('seoWrap').style.display = isSeo ? 'block' : 'none';
+  document.getElementById('tabsRow').style.display = isSeo ? 'none' : 'flex';
+  document.getElementById('articlesContainer').style.display = isSeo ? 'none' : 'block';
+  document.getElementById('progressWrap').style.display = 'none';
+  document.getElementById('logWrap').style.display = 'none';
+  document.getElementById('loadBtn').style.display = isSeo ? 'none' : 'flex';
+  document.getElementById('statsGrid').style.display = 'none';
+  document.getElementById('filterList').style.display = 'none';
+  document.getElementById('mainSub').textContent = isSeo
+    ? 'Введи тему — Claude напишет экспертную статью 12–15к знаков от лица Комета ПК'
+    : 'Введи Claude API ключ слева и нажми «Загрузить новости»';
+
+  if (isSeo) {
+    renderSeoHistory();
+    return;
+  }
+
   currentFilter = 'all';
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('.filter-btn').classList.add('active');
@@ -1785,6 +1907,307 @@ function renderArticles() {
       </div>
     </div>`;
   }).join('');
+}
+
+/* ============================================================
+   SEO ARTICLES — генерация экспертных статей от лица Кометы ПК
+   ============================================================ */
+
+const SEO_SYSTEM_PROMPT = `Ты — ведущий копирайтер магазина игровых ПК "Комета ПК". Пишешь экспертную SEO-статью для блога компании.
+
+ТОН — пиши ТОЛЬКО от лица компании:
+- "Мы", "команда Комета ПК", "наши инженеры", "у нас в сервисе", "в нашей практике", "наш тестовый стенд", "наши сборщики"
+- НИКОГДА не используй "я", "лично я", "по моему мнению" (только "по нашему опыту", "наша рекомендация")
+- Якорные факты компании, которые можно использовать в тексте: 12 лет на рынке, более 15 000 собранных ПК, штатные инженеры-сборщики, тестовый стенд в офисе, гарантия 3 года, бесплатная доставка
+- ОБЯЗАТЕЛЬНО добавляй живые детали из практики (придумывай реалистичные, но не привязывайся к одним и тем же): "недавно собирали для клиента из Краснодара", "на прошлой неделе в наш сервис привезли", "в марте у нас был случай", "наш топ-сборщик потратил полдня", "за прошлый год собрали 87 таких машин", "тестировали в офисе 12 часов подряд", "каждую неделю к нам приходят с этим запросом"
+- Обращение к читателю — на "вы" (уважительно, экспертно, без панибратства)
+
+ОБЯЗАТЕЛЬНАЯ СТРУКТУРА:
+1. Первая строка вывода: \`TITLE: <SEO-title для браузера, 50-70 символов>\`
+2. Пустая строка
+3. \`# H1\` — длинный основной заголовок с ключевыми словами темы
+4. Интро (2-3 абзаца): "Привет! Это команда Комета ПК. Уже 12 лет мы..." + постановка проблемы + что разберём в статье
+5. Блок-выноска: \`> ⚠️ **Важно:** ...\` с главным тезисом
+6. Лид-абзац с двумя путями: "если планируете собирать сами, читайте до конца — будут все нюансы из нашей практики" + "если хотите готовое решение — у нас в каталоге..."
+7. Блок-выноска: \`> 📦 ...\` с CTA-ссылкой на [каталог Комета ПК](https://kometapc.ru/)
+8. ОБЯЗАТЕЛЬНАЯ сноска про цены: \`> 💡 **Обратите внимание:** цены на комплектующие меняются — рынок чувствителен к курсу и поставкам. Мы регулярно обновляем сборки и подбираем оптимальное соотношение цены и производительности под вашу задачу и бюджет. Актуальные цены смотрите [в каталоге](https://kometapc.ru/) или уточняйте у наших менеджеров.\`
+9. \`## Содержание\` — маркированный список всех \`## H2\` разделов статьи
+10. Основные тематические \`## H2\` разделы (5-8 штук) — содержательная часть строго по теме. Внутри каждого H2 — конкретика, числа, кейсы из практики Кометы. Блоки \`> ⚠️ Важно\` / \`> 💡 Совет\` ставь там где уместно (по 2-4 на всю статью).
+11. \`## На чём НЕ стоит экономить\` — 3 болевые точки с реальными кейсами из сервиса
+12. \`## Как сэкономить без потери качества\` — нумерованный список из 5 советов
+13. \`## Когда выгоднее купить готовый ПК\` — список ситуаций + финальный блок \`> 📦\` со ссылкой на каталог
+14. \`## Частые вопросы\` — серия \`### Вопрос?\` + ответ 2-4 предложения (5-7 вопросов, это важно для FAQ-разметки)
+15. \`## Заключение\` — резюме по основным разделам в виде списка + финальный CTA блок \`> 📦\` со ссылкой на каталог
+16. Финал курсивом: *Если статья была полезной — подпишитесь на канал, чтобы не пропустить...*
+
+СТИЛИСТИЧЕСКИЕ ПРАВИЛА (строгие):
+- БРЕНДЫ упоминай ТОЛЬКО у видеокарт и процессоров: NVIDIA RTX 5070, AMD Ryzen 7 7700X, Intel Core i7-14700K — это якорные слова для SEO
+- У материнки, ОЗУ, БП, корпуса, охлаждения, SSD — пиши ТОЛЬКО характеристики, БЕЗ БРЕНДОВ
+  ✅ "32 ГБ DDR5 6000 МГц"
+  ✅ "блок питания 850 Вт 80+ Gold, модульный"
+  ✅ "материнская плата на чипсете B650"
+  ✅ "башенный кулер с тепловой мощностью от 200 Вт"
+  ✅ "СЖО 360 мм"
+  ❌ "Kingston Fury", "MSI MAG", "Deepcool AK620", "be quiet!", "Corsair", "ASUS", "Gigabyte"
+- КОНКРЕТНЫЕ ЧИСЛА везде где можно: FPS в играх (диапазоны), цены в рублях, ватты, температуры в градусах, проценты, годы, разрешения
+- БЛОКИ-ВЫНОСКИ через \`>\` с эмодзи: \`> ⚠️ **Важно:**\`, \`> 💡 **Совет:**\`, \`> 📦\` для CTA-блоков
+- Возле КАЖДОЙ цены ставь короткое напоминание курсивом: *актуальную стоимость уточняйте у менеджеров* или *цена может меняться — проверьте в каталоге*
+- ССЫЛКИ только на kometapc.ru в виде Markdown: \`[Комета ПК](https://kometapc.ru/)\` или \`[в каталоге](https://kometapc.ru/)\`
+- В тексте НЕТ эмодзи кроме как внутри блоков-выносок ⚠️/💡/📦
+- НЕ употребляй слова: "каталог железок" (только "каталог сборок/ПК"), "продаём", "покупайте у нас" (звучит навязчиво)
+
+ОБЪЁМ: {LENGTH_MIN} – {LENGTH_MAX} знаков с пробелами (это критично, статья должна быть длинной, развёрнутой, экспертной). Считай знаки сам.
+
+ФОРМАТ ВЫВОДА:
+- Чистый Markdown без оформления типа \`\`\`markdown
+- Первая строка строго: \`TITLE: <60-символьный заголовок>\`
+- Пустая строка
+- Затем \`# H1\` и весь текст статьи
+- Никаких пояснений до или после ("Конечно, вот ваша статья" — НЕТ). Сразу TITLE: и текст.
+
+ТЕМА СТАТЬИ ОТ ПОЛЬЗОВАТЕЛЯ:
+{TOPIC}
+
+Напиши статью прямо сейчас.`;
+
+let seoCurrentArticle = null; // { title, h1, fullText, textWithoutH1, chars, generatedAt, topic }
+
+function setSeoStatus(text, isError) {
+  const p = document.getElementById('seoProgress');
+  const t = document.getElementById('seoProgressText');
+  p.style.display = 'block';
+  p.style.borderColor = isError ? 'var(--danger)' : 'var(--pending)';
+  t.style.color = isError ? 'var(--danger)' : 'var(--pending)';
+  t.innerHTML = (isError ? '✗ ' : '<span class="seo-progress-spin">↻</span> ') + esc(text);
+}
+function hideSeoStatus() {
+  document.getElementById('seoProgress').style.display = 'none';
+}
+
+async function generateSeoArticle() {
+  const key = (document.getElementById('apiKey').value || localStorage.getItem('pcg_api_key') || '').trim();
+  if (!key.startsWith('sk-ant-')) {
+    alert('Сначала введи Claude API ключ слева');
+    return;
+  }
+  const topic = document.getElementById('seoTopic').value.trim();
+  if (topic.length < 10) {
+    alert('Опиши тему статьи подробнее (минимум 10 символов)');
+    return;
+  }
+  const length = parseInt(document.getElementById('seoLength').value) || 14000;
+  const lengthMin = Math.max(8000, length - 1500);
+  const lengthMax = Math.min(20000, length + 1500);
+
+  const btn = document.getElementById('seoGenBtn');
+  const btnText = document.getElementById('seoGenBtnText');
+  btn.disabled = true;
+  btnText.textContent = 'Пишу...';
+  document.getElementById('seoResult').style.display = 'none';
+  setSeoStatus('Пишу экспертную статью... это займёт 1–2 минуты');
+
+  const prompt = SEO_SYSTEM_PROMPT
+    .replace('{TOPIC}', topic)
+    .replace('{LENGTH_MIN}', lengthMin)
+    .replace('{LENGTH_MAX}', lengthMax);
+
+  try {
+    const data = await callClaude(key, prompt, null, 8192);
+    const text = (data.content || []).filter(c => c.type === 'text').map(c => c.text).join('').trim();
+    if (!text) throw new Error('Claude вернул пустой ответ');
+
+    // Парсим TITLE: и H1
+    let title = '';
+    let body = text;
+    const titleMatch = text.match(/^TITLE:\s*(.+?)\s*\n/);
+    if (titleMatch) {
+      title = titleMatch[1].trim();
+      body = text.slice(titleMatch[0].length).trimStart();
+    }
+    const h1Match = body.match(/^#\s+(.+)/m);
+    const h1 = h1Match ? h1Match[1].trim() : title || 'Без заголовка';
+    if (!title) title = h1;
+
+    const textWithoutH1 = body.replace(/^#\s+.+\n?/m, '').trimStart();
+    const chars = body.length;
+
+    seoCurrentArticle = {
+      title, h1, fullText: body, textWithoutH1, chars,
+      generatedAt: new Date().toISOString(),
+      topic
+    };
+    saveSeoToHistory(seoCurrentArticle);
+    renderSeoResult();
+    hideSeoStatus();
+  } catch(e) {
+    setSeoStatus('Ошибка: ' + (e.message || 'не удалось получить ответ'), true);
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btnText.textContent = 'Написать статью';
+  }
+}
+
+function renderSeoResult() {
+  if (!seoCurrentArticle) return;
+  const a = seoCurrentArticle;
+  document.getElementById('seoResultTitle').textContent = a.h1;
+  document.getElementById('seoResultMeta').textContent =
+    `TITLE: ${a.title} · ${a.chars.toLocaleString('ru-RU')} знаков · ${new Date(a.generatedAt).toLocaleString('ru-RU')}`;
+
+  const { html } = renderArticleHtml(a.fullText);
+  document.getElementById('seoResultText').innerHTML = html;
+
+  document.getElementById('seoResultActions').innerHTML = `
+    <button class="copy-btn" onclick="copySeoText(event)">⎘ Markdown</button>
+    <button class="copy-btn" onclick="copySeoHtml(event)">⎘ HTML</button>
+    <button class="publish-btn" id="seoPublishBtn" onclick="publishSeoToWP(event)">⬆ В WordPress</button>
+  `;
+  document.getElementById('seoResult').style.display = 'block';
+  document.getElementById('seoResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function copySeoText(e) {
+  if (!seoCurrentArticle) return;
+  const btn = e && e.target;
+  navigator.clipboard.writeText(`TITLE: ${seoCurrentArticle.title}\n\n${seoCurrentArticle.fullText}`)
+    .then(() => { if (btn) flashCopy(btn, '✓ Скопировано'); });
+}
+function copySeoHtml(e) {
+  if (!seoCurrentArticle) return;
+  const btn = e && e.target;
+  const html = typeof marked !== 'undefined'
+    ? marked.parse(seoCurrentArticle.textWithoutH1)
+    : seoCurrentArticle.textWithoutH1;
+  navigator.clipboard.writeText(html)
+    .then(() => { if (btn) flashCopy(btn, '✓ HTML скопирован'); });
+}
+function flashCopy(btn, msg) {
+  const orig = btn.textContent;
+  btn.textContent = msg;
+  setTimeout(() => { btn.textContent = orig; }, 1500);
+}
+
+/* ---- WORDPRESS ПУБЛИКАЦИЯ SEO-СТАТЬИ ---- */
+async function publishSeoToWP(e) {
+  e.stopPropagation();
+  const btn = e.target;
+  if (!seoCurrentArticle) return;
+
+  const wpUrl  = localStorage.getItem('wp_url');
+  const wpUser = localStorage.getItem('wp_user');
+  const wpPass = localStorage.getItem('wp_pass');
+  if (!wpUrl || !wpUser || !wpPass) {
+    alert('Сначала заполни настройки WordPress в сайдбаре');
+    return;
+  }
+
+  const status = document.getElementById('wpStatus').value;
+  const categoryId = document.getElementById('wpCategory').value;
+  const credentials = btoa(`${wpUser}:${wpPass}`);
+
+  btn.disabled = true;
+  const origText = btn.textContent;
+  btn.textContent = '↻ Публикую...';
+
+  try {
+    const htmlContent = typeof marked !== 'undefined'
+      ? marked.parse(seoCurrentArticle.textWithoutH1)
+      : seoCurrentArticle.textWithoutH1.replace(/\n/g, '<br>');
+
+    const postBody = {
+      title: seoCurrentArticle.h1,
+      content: htmlContent,
+      status,
+      format: 'standard'
+    };
+    if (categoryId) postBody.categories = [parseInt(categoryId)];
+
+    const resp = await fetch(`${wpUrl}/wp-json/wp/v2/posts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${credentials}` },
+      body: JSON.stringify(postBody)
+    });
+    const rawText = await resp.text();
+    let data = {};
+    try { data = JSON.parse(rawText); } catch {
+      throw new Error(`Сервер вернул не JSON (HTTP ${resp.status}): ${rawText.slice(0, 200)}`);
+    }
+    if (!resp.ok) throw new Error(data.message || data.error || 'HTTP ' + resp.status);
+
+    const postUrl = data.link || `${wpUrl}/?p=${data.id}`;
+    btn.textContent = '✓ Опубликовано';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    const actionsEl = btn.parentElement;
+    if (!actionsEl.querySelector('.wp-post-link')) {
+      const link = document.createElement('a');
+      link.className = 'wp-post-link';
+      link.href = postUrl;
+      link.target = '_blank';
+      link.textContent = '↗ Открыть';
+      link.style.cssText = 'font-size:12px;color:var(--accent);text-decoration:none;white-space:nowrap;padding:6px 10px;border:1px solid var(--accent);border-radius:6px;';
+      actionsEl.appendChild(link);
+    }
+  } catch(err) {
+    btn.textContent = '✗ Ошибка';
+    btn.style.borderColor = 'var(--danger)';
+    btn.style.color = 'var(--danger)';
+    alert('Ошибка публикации: ' + err.message);
+    setTimeout(() => {
+      btn.textContent = origText;
+      btn.style.borderColor = '';
+      btn.style.color = '';
+      btn.disabled = false;
+    }, 3000);
+  }
+}
+
+/* ---- ИСТОРИЯ SEO-СТАТЕЙ В localStorage ---- */
+const SEO_HISTORY_KEY = 'pcg_seo_history';
+const SEO_HISTORY_LIMIT = 30;
+
+function loadSeoHistory() {
+  try { return JSON.parse(localStorage.getItem(SEO_HISTORY_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveSeoToHistory(art) {
+  const list = loadSeoHistory();
+  list.unshift({
+    title: art.title, h1: art.h1, fullText: art.fullText,
+    textWithoutH1: art.textWithoutH1, chars: art.chars,
+    generatedAt: art.generatedAt, topic: art.topic
+  });
+  if (list.length > SEO_HISTORY_LIMIT) list.length = SEO_HISTORY_LIMIT;
+  try { localStorage.setItem(SEO_HISTORY_KEY, JSON.stringify(list)); } catch(e) { console.warn('История не сохранилась:', e); }
+  renderSeoHistory();
+}
+function renderSeoHistory() {
+  const list = loadSeoHistory();
+  const wrap = document.getElementById('seoHistory');
+  const ul = document.getElementById('seoHistoryList');
+  if (!list.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  ul.innerHTML = list.map((it, i) => `
+    <div class="seo-history-item" onclick="restoreSeoFromHistory(${i})">
+      <div class="seo-history-text" title="${esc(it.h1)}">${esc(it.h1)}</div>
+      <div class="seo-history-date">${new Date(it.generatedAt).toLocaleDateString('ru-RU')} · ${it.chars.toLocaleString('ru-RU')} зн.</div>
+      <button class="seo-history-del" onclick="event.stopPropagation();deleteSeoFromHistory(${i})" title="Удалить">✕</button>
+    </div>
+  `).join('');
+}
+function restoreSeoFromHistory(idx) {
+  const list = loadSeoHistory();
+  if (!list[idx]) return;
+  seoCurrentArticle = list[idx];
+  document.getElementById('seoTopic').value = list[idx].topic || '';
+  renderSeoResult();
+}
+function deleteSeoFromHistory(idx) {
+  const list = loadSeoHistory();
+  list.splice(idx, 1);
+  localStorage.setItem(SEO_HISTORY_KEY, JSON.stringify(list));
+  renderSeoHistory();
 }
 </script>
 </body>
