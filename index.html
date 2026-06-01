@@ -167,6 +167,19 @@
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  /* Import zone */
+  .import-drop-zone { border: 2px dashed var(--border2); border-radius: 12px; padding: 32px 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .import-drop-zone:hover, .import-drop-zone.drag-over { border-color: var(--accent); background: var(--accent-dim); }
+  .import-drop-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.5; }
+  .import-drop-text { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: var(--text); }
+  .import-drop-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .import-or { text-align: center; font-size: 11px; color: var(--muted); margin: 14px 0 10px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .seo-field-label { font-size: 11px; color: var(--muted); margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+  .seo-char-count { font-size: 10px; font-family: monospace; }
+  .seo-char-count.ok { color: var(--accent); }
+  .seo-char-count.warn { color: var(--pending); }
+  .seo-char-count.bad { color: var(--danger); }
+  .imp-field-wrap { margin-bottom: 12px; }
   /* WordPress block */
   .wp-section { padding: 12px 20px; border-top: 1px solid var(--border); }
   .wp-section .sidebar-label { margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
@@ -330,35 +343,76 @@
 
       <!-- SEO ARTICLES BLOCK -->
       <div class="seo-wrap" id="seoWrap">
-        <div class="seo-card">
-          <div class="seo-card-title">Экспертная статья от лица Комета ПК</div>
+
+        <!-- IMPORT CARD -->
+        <div class="seo-card" id="importCard">
+          <div class="seo-card-title">Импорт статьи</div>
           <div class="seo-card-sub">
-            Опиши тему статьи — Claude напишет развёрнутый материал в фирменном стиле:
-            тон от компании, опора на 12-летний опыт сборки, бренды только у видеокарт и процессоров,
-            живые детали из практики, блоки ⚠️/💡, FAQ-секция, сноска про актуальность цен,
-            CTA-блоки со ссылкой на kometapc.ru. Объём 12–15 тыс. знаков.
+            Загрузи JSON-файл со статьёй — SEO-теги, slug и теги подтянутся автоматически.
+            Файл создаётся в Cowork (попроси Claude написать статью и сохранить как article_*.json).
           </div>
-          <textarea id="seoTopic" class="seo-textarea" placeholder="Например: Как выбрать игровой ПК для Cyberpunk 2077 в 2026 году — 5 готовых сборок на RTX 50&#10;&#10;Или: Бюджетный игровой ПК до 100 тысяч — реальные сборки с тестами FPS&#10;&#10;Или: Полное руководство по апгрейду старого ПК — что менять в первую очередь"></textarea>
-          <div class="seo-row">
-            <div class="seo-len-wrap">
-              <span class="seo-len-label">Объём (знаков):</span>
-              <input type="number" id="seoLength" class="seo-len-input" value="14000" min="8000" max="20000" step="500">
-            </div>
-            <label class="seo-len-wrap" style="cursor:pointer;user-select:none;" title="Claude ищет актуальные модели и цены в интернете перед написанием статьи. ~5 ₽ за статью, +30-60 сек к генерации">
-              <input type="checkbox" id="seoWebSearch" checked style="cursor:pointer;">
-              <span class="seo-len-label" style="color:var(--accent);">🌐 Веб-поиск</span>
-            </label>
-            <button class="seo-gen-btn" id="seoGenBtn" onclick="generateSeoArticle()">
-              <span>✦</span>
-              <span id="seoGenBtnText">Написать статью</span>
+
+          <div class="import-drop-zone" id="importDropZone" onclick="document.getElementById('importFileInput').click()">
+            <div class="import-drop-icon">📄</div>
+            <div class="import-drop-text">Нажми или перетащи .json файл</div>
+            <div class="import-drop-sub">Формат: article_название.json</div>
+          </div>
+          <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="handleImportFile(this)">
+
+          <div class="import-or">— или вставь JSON вручную —</div>
+          <textarea id="importPasteArea" class="seo-textarea" style="min-height:72px;font-family:monospace;font-size:11px;" placeholder='{"title":"SEO заголовок","h1":"H1 заголовок","meta_description":"...","slug":"url-slug","tags":["тег1"],"content":"# H1\n\nТекст..."}'></textarea>
+          <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+            <button class="seo-gen-btn" onclick="parseImportedJson(document.getElementById('importPasteArea').value)">
+              <span>↵</span><span>Загрузить</span>
             </button>
           </div>
         </div>
 
-        <div class="seo-progress" id="seoProgress">
+        <!-- SEO FIELDS (появляются после загрузки) -->
+        <div class="seo-card" id="importFields" style="display:none;">
+          <div class="seo-card-title">SEO-настройки</div>
+          <div class="seo-card-sub" id="importFilename" style="margin-bottom:14px;"></div>
+
+          <div class="imp-field-wrap">
+            <div class="seo-field-label">
+              SEO Title <small>(50–70 символов для поисковиков)</small>
+              <span class="seo-char-count" id="metaTitleCount">0</span>
+            </div>
+            <input id="impMetaTitle" class="seo-title-input" placeholder="SEO заголовок страницы" oninput="updateCharCount('impMetaTitle','metaTitleCount',50,70)">
+          </div>
+
+          <div class="imp-field-wrap">
+            <div class="seo-field-label">
+              Meta Description <small>(150–160 символов)</small>
+              <span class="seo-char-count" id="metaDescCount">0</span>
+            </div>
+            <textarea id="impMetaDesc" class="seo-textarea" style="min-height:68px;" placeholder="Описание страницы для поисковых систем" oninput="updateCharCount('impMetaDesc','metaDescCount',150,160)"></textarea>
+          </div>
+
+          <div class="imp-field-wrap">
+            <div class="seo-field-label">Slug (URL ЧПУ)</div>
+            <input id="impSlug" class="seo-title-input" placeholder="primer-nazvaniya-stati">
+          </div>
+
+          <div class="imp-field-wrap">
+            <div class="seo-field-label">Теги — нажми Enter или запятую чтобы добавить</div>
+            <input id="impTagInput" class="seo-title-input" placeholder="Введи тег и нажми Enter..." onkeydown="handleTagInput(event)">
+            <div class="tag-pills" id="tagPills"></div>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+            <button class="publish-btn" id="impPublishBtn" onclick="publishImportedToWP()">⬆ Опубликовать в WordPress</button>
+            <button class="copy-btn" onclick="copySeoText()">⎘ Markdown</button>
+            <button class="copy-btn" onclick="copySeoHtml()">⎘ HTML</button>
+            <button class="copy-btn" style="margin-left:auto;" onclick="resetImport()">✕ Сбросить</button>
+          </div>
+          <div id="impPublishStatus" style="font-size:12px;margin-top:8px;"></div>
+        </div>
+
+        <div class="seo-progress" id="seoProgress" style="display:none;">
           <div class="seo-progress-label">
             <span class="seo-progress-spin">↻</span>
-            <span id="seoProgressText">Пишу статью... это займёт 1–2 минуты</span>
+            <span id="seoProgressText"></span>
           </div>
         </div>
 
@@ -1916,103 +1970,255 @@ function renderArticles() {
 }
 
 /* ============================================================
-   SEO ARTICLES — генерация экспертных статей от лица Кометы ПК
+   SEO ARTICLES — ИМПОРТ ГОТОВЫХ СТАТЕЙ
    ============================================================ */
 
-/* === SYSTEM PROMPT — фирменный стиль Комета ПК (идёт в поле system) === */
-const SEO_SYSTEM = `Ты — ведущий копирайтер магазина игровых ПК "Комета ПК". Пишешь экспертные SEO-статьи для блога компании.
+/* Формат JSON-файла:
+{
+  "title":            "SEO Title (50-70 символов)",
+  "h1":               "Полный H1 заголовок статьи",
+  "meta_description": "Описание для поисковиков (150-160 символов)",
+  "slug":             "url-friendly-slug",
+  "tags":             ["тег1", "тег2", "тег3"],
+  "content":          "# H1\n\nМаркдаун текст статьи..."
+}
+*/
 
-# ТОН (от лица компании, без исключений)
-- Используй ТОЛЬКО: "мы", "команда Комета ПК", "наши инженеры", "у нас в сервисе", "в нашей практике", "наш тестовый стенд", "наши сборщики"
-- ЗАПРЕЩЕНО: "я", "лично я", "по моему мнению", "мой опыт" (только "наш опыт")
-- Якорные факты компании (используй естественно в тексте): 12 лет на рынке, более 15 000 собранных ПК, штатные инженеры-сборщики, тестовый стенд в офисе, гарантия 3 года, бесплатная доставка
-- ОБЯЗАТЕЛЬНО вплетай живые детали из практики (выдумывай реалистичные, разные в каждой статье): "недавно собирали для клиента из Краснодара", "на прошлой неделе в наш сервис привезли", "в марте был случай", "за прошлый год собрали 87 таких машин", "тестировали в офисе 12 часов подряд", "каждую неделю к нам приходят с этим запросом"
-- Обращение к читателю — на "вы". Уважительно, экспертно, без панибратства
+const SEO_SYSTEM = `DEPRECATED`; // оставлен для совместимости
 
-# БРЕНДЫ — критическое правило
-- Бренды упоминай ТОЛЬКО у видеокарт и процессоров: NVIDIA RTX 5070, AMD Ryzen 7 7700X, Intel Core i7-14700K (это якорные слова для SEO)
-- У материнки, ОЗУ, БП, корпуса, охлаждения, SSD — ТОЛЬКО характеристики БЕЗ брендов:
-  ✅ "32 ГБ DDR5 6000 МГц"
-  ✅ "блок питания 850 Вт 80+ Gold, модульный"
-  ✅ "материнская плата на чипсете B650"
-  ✅ "башенный кулер с тепловой мощностью от 200 Вт"
-  ✅ "СЖО 360 мм"
-  ❌ "Kingston Fury", "MSI MAG", "Deepcool AK620", "be quiet!", "Corsair", "ASUS", "Gigabyte"
+let importedTags = [];
+let seoCurrentArticle = null;
 
-# АКТУАЛЬНАЯ ДАТА
-Сейчас {CURRENT_YEAR} год. В тексте используй ТОЛЬКО год {CURRENT_YEAR} (например: "в {CURRENT_YEAR} году", "актуально на {CURRENT_YEAR}", "рынок {CURRENT_YEAR}"). НЕ упоминай 2024, 2025 и более ранние годы как "сейчас" или "текущий период" — они в прошлом.
+/* ---- DRAG & DROP ---- */
+(function() {
+  const zone = document.getElementById('importDropZone');
+  if (!zone) return;
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) readImportFile(file);
+  });
+})();
 
-# ВЕБ-ПОИСК (если инструмент web_search доступен)
-ДО начала написания статьи ОБЯЗАТЕЛЬНО проведи 3-5 поисковых запросов через web_search, чтобы собрать актуальные данные на {CURRENT_YEAR} год:
-1. "актуальные процессоры Intel AMD {CURRENT_YEAR} цены Россия" — узнай какие модели CPU в продаже сейчас
-2. "видеокарты NVIDIA RTX {CURRENT_YEAR} актуальные модели" — какие GPU сейчас на рынке
-3. "чипсеты материнских плат {CURRENT_YEAR} актуальные" — какие платформы сейчас используются
-4. Дополнительные запросы по теме статьи (если про конкретную игру — её системные требования, если про сборку — текущие цены)
+function handleImportFile(input) {
+  if (input.files[0]) readImportFile(input.files[0]);
+}
 
-Поисковые запросы делай на русском языке, ориентируйся на российский рынок.
+function readImportFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('importPasteArea').value = e.target.result;
+    parseImportedJson(e.target.result, file.name);
+  };
+  reader.readAsText(file);
+}
 
-ПОСЛЕ сбора данных — пиши статью на основе найденной информации:
-- Используй ТОЛЬКО актуальные модели, которые реально есть в продаже на {CURRENT_YEAR}
-- НЕ упоминай снятые с производства модели как "актуальные"
-- Цены — из реальных российских магазинов (DNS, Citilink, Регард, и т.п.)
-- Чипсеты материнок — только современные на {CURRENT_YEAR}
-- DDR5 — стандарт, DDR4 только для бюджетных сборок
+function parseImportedJson(jsonStr, filename) {
+  let data;
+  try {
+    data = JSON.parse(jsonStr.trim());
+  } catch(e) {
+    alert('Ошибка парсинга JSON: ' + e.message);
+    return;
+  }
+  if (!data.content && !data.h1) {
+    alert('В файле нет поля content или h1. Проверь формат.');
+    return;
+  }
 
-Если поиск недоступен — честно пиши, что данные могут быть неактуальными, и опирайся на принципы и характеристики, а не конкретные модели.
+  // Заполняем seoCurrentArticle
+  const h1 = data.h1 || (data.content || '').match(/^#\s+(.+)/m)?.[1]?.trim() || '';
+  const textContent = data.content || '';
+  const textWithoutH1 = textContent.replace(/^#\s+.+\n?/m, '').trimStart();
 
-# СТИЛИСТИЧЕСКИЕ ПРАВИЛА
-- Конкретные числа везде, где можно: FPS в играх (диапазоны), цены в рублях, ватты, температуры, проценты, разрешения, годы
-- Блоки-выноски через \`>\` с эмодзи: \`> ⚠️ **Важно:**\`, \`> 💡 **Совет:**\`, \`> 📦\` для CTA. Расставляй естественно, 4-6 блоков на статью
-- Возле КАЖДОЙ цены добавляй короткое напоминание курсивом: *актуальную стоимость уточняйте у менеджеров* или похожее
-- Ссылки ТОЛЬКО на kometapc.ru в Markdown: \`[Комета ПК](https://kometapc.ru/)\` или \`[в каталоге](https://kometapc.ru/)\`
-- НЕТ эмодзи в обычном тексте — только внутри блоков-выносок
-- НЕ используй: "продаём", "покупайте у нас", "лучшая цена" (навязчиво)
+  seoCurrentArticle = {
+    title: data.title || h1,
+    h1,
+    fullText: textContent,
+    textWithoutH1,
+    chars: textContent.length,
+    generatedAt: new Date().toISOString(),
+    topic: filename || 'импорт'
+  };
 
-# ЗАПРЕТ НА ПОВТОРЫ (критическое правило)
-Длинная статья = высокий риск дублирования. Перед написанием каждого раздела вспомни, что уже было выше, и НЕ повторяй:
-- Каждая выдуманная история из практики (клиент, случай, тест на стенде) упоминается РОВНО ОДИН РАЗ за всю статью. Не пересказывай один и тот же кейс в разных разделах
-- Технические факты, тесты и наблюдения тоже упоминаются ОДИН РАЗ. Если уже описал результат теста или цифру — не возвращайся к ней в новом разделе
-- Фраза "гарантия 3 года и бесплатная доставка" (и любые её вариации с перечислением преимуществ) упоминается ТОЛЬКО ОДИН РАЗ за всю статью — в одном финальном блоке 📦. В остальных местах ссылайся на каталог без перечисления преимуществ
-- Якорные факты компании ("12 лет на рынке", "15 000 сборок", "тестовый стенд") упоминаются 1-2 раза за всю статью, не больше. В заключении НЕ повторяй то, что было в интро
-- Раздел "Частые вопросы" задаёт НОВЫЕ ракурсы, а не пересказывает основной текст. Каждый вопрос — про то, чего не было выше или раскрывает с другой стороны. Запрещено дублировать советы и сравнения, которые уже даны в основной части
-- Раздел "Заключение" — это краткое резюме списком, а НЕ пересказ деталей. Без новых кейсов, без повторения цифр из тестов
+  // Заполняем SEO-поля
+  document.getElementById('impMetaTitle').value = data.title || h1;
+  document.getElementById('impMetaDesc').value = data.meta_description || '';
+  document.getElementById('impSlug').value = data.slug || '';
+  document.getElementById('importFilename').textContent = filename
+    ? `Файл: ${filename} · ${textContent.length.toLocaleString('ru-RU')} знаков`
+    : `${textContent.length.toLocaleString('ru-RU')} знаков`;
 
-# ОБЯЗАТЕЛЬНАЯ СТРУКТУРА (каждый пункт должен быть в статье)
+  // Теги
+  importedTags = Array.isArray(data.tags) ? [...data.tags] : [];
+  renderTagPills();
 
-1. Первая строка вывода: \`TITLE: <SEO-заголовок 50-70 символов>\`
-2. Пустая строка
-3. \`# H1\` — длинный заголовок темы с ключевыми словами
-4. Интро 2-3 абзаца: "Привет! Это команда Комета ПК. Уже 12 лет мы..." + проблема + что разберём
-5. Блок \`> ⚠️ **Важно:** <главный тезис>\`
-6. Лид-абзац: "Если планируете собирать сами — читайте до конца, будут все нюансы из нашей практики. Если хотите готовое решение — в каталоге..."
-7. Блок \`> 📦 <CTA с ссылкой на [каталог Комета ПК](https://kometapc.ru/)>\`
-8. Блок \`> 💡 **Обратите внимание:** цены на комплектующие меняются — рынок чувствителен к курсу и поставкам. Мы регулярно обновляем сборки и подбираем оптимальное соотношение цены и производительности под вашу задачу и бюджет. Актуальные цены — [в каталоге](https://kometapc.ru/) или у наших менеджеров.\`
-9. \`## Содержание\` — маркированный список всех \`## H2\` ниже
-10. Основные тематические \`## H2\` разделы (5-8 штук) — по теме статьи. Числа, кейсы, конкретика. Внутри расставлены блоки ⚠️/💡
-11. \`## На чём НЕ стоит экономить\` — 3 болевые точки с реальными кейсами из сервиса
-12. \`## Как сэкономить без потери качества\` — нумерованный список из 5 советов
-13. \`## Когда выгоднее купить готовый ПК\` — список ситуаций + блок \`> 📦\` со ссылкой
-14. \`## Частые вопросы\` — КРИТИЧЕСКИ ВАЖНО: серия \`### <вопрос>?\` + ответ 2-4 предложения. МИНИМУМ 5 вопросов, ИДЕАЛЬНО 6-7. Статья без этого раздела считается невыполненной.
-15. \`## Заключение\` — резюме основных тезисов списком + финальный \`> 📦\` со ссылкой на каталог
-16. Финал курсивом: *Если статья была полезной — подпишитесь на канал...*
+  // Обновляем счётчики
+  updateCharCount('impMetaTitle', 'metaTitleCount', 50, 70);
+  updateCharCount('impMetaDesc', 'metaDescCount', 150, 160);
 
-# ФОРМАТ ВЫВОДА
-- Чистый Markdown без обёртки \`\`\`markdown
-- Первая строка строго: \`TITLE: ...\`
-- Пустая строка
-- Далее \`# H1\` и весь текст
-- НИКАКИХ пояснений до/после ("Конечно, вот статья" — НЕТ). Сразу TITLE: и контент.
+  // Показываем поля и превью
+  document.getElementById('importFields').style.display = 'block';
+  renderSeoResult();
+  document.getElementById('seoResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
-# КОНТРОЛЬ КАЧЕСТВА — перед отправкой проверь себя
-- Есть ли в начале \`TITLE:\`?
-- Есть ли блок про изменение цен с эмодзи 💡?
-- Есть ли раздел \`## Частые вопросы\` с минимум 5 \`### вопросами\`?
-- Есть ли \`## Заключение\` с финальным CTA?
-- Нет ли брендов у материнки/ОЗУ/БП?
-- Все ли цены имеют курсивную сноску про актуальность?
-Если что-то из этого отсутствует — допиши, статья не готова без этих элементов.`;
+/* ---- CHAR COUNTERS ---- */
+function updateCharCount(inputId, countId, min, max) {
+  const len = document.getElementById(inputId).value.length;
+  const el = document.getElementById(countId);
+  el.textContent = len;
+  el.className = 'seo-char-count ' + (len < min ? 'bad' : len <= max ? 'ok' : 'warn');
+}
 
-let seoCurrentArticle = null; // { title, h1, fullText, textWithoutH1, chars, generatedAt, topic }
+/* ---- TAG INPUT ---- */
+function handleTagInput(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = e.target.value.replace(/,/g,'').trim();
+    if (val && !importedTags.includes(val)) {
+      importedTags.push(val);
+      renderTagPills();
+    }
+    e.target.value = '';
+  }
+}
+function removeTag(idx) {
+  importedTags.splice(idx, 1);
+  renderTagPills();
+}
+function renderTagPills() {
+  document.getElementById('tagPills').innerHTML = importedTags.map((t, i) =>
+    `<span class="tag-pill">${esc(t)}<span class="tag-pill-del" onclick="removeTag(${i})">×</span></span>`
+  ).join('');
+}
+
+function resetImport() {
+  seoCurrentArticle = null;
+  importedTags = [];
+  document.getElementById('importFields').style.display = 'none';
+  document.getElementById('seoResult').style.display = 'none';
+  document.getElementById('importPasteArea').value = '';
+  document.getElementById('importFileInput').value = '';
+  document.getElementById('tagPills').innerHTML = '';
+}
+
+/* ---- PUBLISH IMPORTED TO WORDPRESS ---- */
+async function publishImportedToWP() {
+  if (!seoCurrentArticle) return;
+
+  const wpUrl  = localStorage.getItem('wp_url');
+  const wpUser = localStorage.getItem('wp_user');
+  const wpPass = localStorage.getItem('wp_pass');
+  if (!wpUrl || !wpUser || !wpPass) {
+    alert('Сначала заполни настройки WordPress в сайдбаре');
+    return;
+  }
+
+  const btn = document.getElementById('impPublishBtn');
+  const statusEl = document.getElementById('impPublishStatus');
+  const credentials = btoa(`${wpUser}:${wpPass}`);
+  btn.disabled = true;
+
+  const metaTitle = document.getElementById('impMetaTitle').value.trim();
+  const metaDesc  = document.getElementById('impMetaDesc').value.trim();
+  const slug      = document.getElementById('impSlug').value.trim();
+  const status    = document.getElementById('wpStatus').value;
+  const categoryId = document.getElementById('wpCategory').value;
+
+  try {
+    // 1. Создаём/находим теги в WP
+    btn.textContent = '↻ Создаю теги...';
+    statusEl.textContent = '';
+    const tagIds = [];
+    for (const tag of importedTags) {
+      try {
+        // Ищем существующий тег
+        const searchResp = await fetch(`${wpUrl}/wp-json/wp/v2/tags?search=${encodeURIComponent(tag)}&per_page=5`, {
+          headers: { 'Authorization': `Basic ${credentials}` }
+        });
+        const existing = await searchResp.json();
+        const found = existing.find(t => t.name.toLowerCase() === tag.toLowerCase());
+        if (found) {
+          tagIds.push(found.id);
+        } else {
+          // Создаём новый тег
+          const createResp = await fetch(`${wpUrl}/wp-json/wp/v2/tags`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${credentials}` },
+            body: JSON.stringify({ name: tag })
+          });
+          const created = await createResp.json();
+          if (created.id) tagIds.push(created.id);
+        }
+      } catch {}
+    }
+
+    // 2. Формируем HTML контент
+    btn.textContent = '↻ Публикую...';
+    const htmlContent = typeof marked !== 'undefined'
+      ? marked.parse(seoCurrentArticle.textWithoutH1)
+      : seoCurrentArticle.textWithoutH1.replace(/\n/g, '<br>');
+
+    const postBody = {
+      title:   seoCurrentArticle.h1,
+      content: htmlContent,
+      status,
+      format: 'standard',
+      meta: {}
+    };
+    if (slug) postBody.slug = slug;
+    if (tagIds.length) postBody.tags = tagIds;
+    if (categoryId) postBody.categories = [parseInt(categoryId)];
+
+    // SEO мета (Yoast / RankMath / SEOPress)
+    if (metaTitle) {
+      postBody.meta['_yoast_wpseo_title']    = metaTitle;
+      postBody.meta['rank_math_title']        = metaTitle;
+      postBody.meta['_seopress_titles_title'] = metaTitle;
+    }
+    if (metaDesc) {
+      postBody.meta['_yoast_wpseo_metadesc']    = metaDesc;
+      postBody.meta['rank_math_description']     = metaDesc;
+      postBody.meta['_seopress_titles_desc']     = metaDesc;
+    }
+
+    const resp = await fetch(`${wpUrl}/wp-json/wp/v2/posts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${credentials}` },
+      body: JSON.stringify(postBody)
+    });
+    const rawText = await resp.text();
+    let data = {};
+    try { data = JSON.parse(rawText); } catch {
+      throw new Error(`Сервер вернул не JSON (HTTP ${resp.status}): ${rawText.slice(0, 200)}`);
+    }
+    if (!resp.ok) throw new Error(data.message || data.error || 'HTTP ' + resp.status);
+
+    const postUrl = data.link || `${wpUrl}/?p=${data.id}`;
+    btn.textContent = '✓ Опубликовано';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    statusEl.innerHTML = `<a href="${postUrl}" target="_blank" style="color:var(--accent);">↗ Открыть пост</a> · ID: ${data.id}${tagIds.length ? ` · ${tagIds.length} тегов` : ''}`;
+
+  } catch(err) {
+    btn.textContent = '✗ Ошибка';
+    btn.style.borderColor = 'var(--danger)';
+    btn.style.color = 'var(--danger)';
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = err.message;
+    setTimeout(() => {
+      btn.textContent = '⬆ Опубликовать в WordPress';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+      btn.disabled = false;
+    }, 3000);
+  }
+}
+
 
 function setSeoStatus(text, isError) {
   const p = document.getElementById('seoProgress');
@@ -2026,132 +2232,6 @@ function hideSeoStatus() {
   document.getElementById('seoProgress').style.display = 'none';
 }
 
-async function generateSeoArticle() {
-  const key = (document.getElementById('apiKey').value || localStorage.getItem('pcg_api_key') || '').trim();
-  if (!key.startsWith('sk-ant-')) {
-    alert('Сначала введи Claude API ключ слева');
-    return;
-  }
-  const topic = document.getElementById('seoTopic').value.trim();
-  if (topic.length < 10) {
-    alert('Опиши тему статьи подробнее (минимум 10 символов)');
-    return;
-  }
-  const length = parseInt(document.getElementById('seoLength').value) || 14000;
-  const lengthMin = Math.max(8000, length - 1500);
-  const lengthMax = Math.min(20000, length + 1500);
-
-  const useWebSearch = document.getElementById('seoWebSearch').checked;
-
-  const btn = document.getElementById('seoGenBtn');
-  const btnText = document.getElementById('seoGenBtnText');
-  btn.disabled = true;
-  btnText.textContent = 'Пишу...';
-  document.getElementById('seoResult').style.display = 'none';
-  setSeoStatus(useWebSearch
-    ? 'Ищу актуальные данные в интернете и пишу статью... 2–4 минуты'
-    : 'Пишу экспертную статью... 1–2 минуты');
-
-  const currentYear = new Date().getFullYear();
-  const systemPrompt = SEO_SYSTEM.replace(/\{CURRENT_YEAR\}/g, currentYear);
-
-  // Короткий user prompt с темой и напоминанием ключевых элементов в конце (recency bias)
-  const userPrompt = `Напиши экспертную SEO-статью для блога Комета ПК по теме:
-
-"${topic}"
-
-Текущий год: ${currentYear}. Используй в тексте именно ${currentYear} год.
-${useWebSearch ? `\nВАЖНО: тебе ДОСТУПЕН инструмент web_search. ОБЯЗАТЕЛЬНО используй его 3-5 раз ДО НАПИСАНИЯ статьи, чтобы найти актуальные модели процессоров, видеокарт, материнских плат и их цены в российских магазинах на ${currentYear} год. Без актуальных данных статья будет неточной. После поиска пиши статью, опираясь на найденную информацию.\n` : ''}
-Объём: ${lengthMin}–${lengthMax} знаков с пробелами.
-
-ОБЯЗАТЕЛЬНЫЕ ЭЛЕМЕНТЫ (проверь перед отправкой):
-1. Первая строка \`TITLE: ...\` (50-70 символов)
-2. # H1, интро от лица команды Комета ПК
-3. Блок ⚠️ Важно, лид с двумя путями, блок 📦 со ссылкой
-4. Блок 💡 про изменение цен
-5. ## Содержание
-6. 5-8 основных ## разделов с цифрами и кейсами
-7. ## На чём НЕ стоит экономить (3 пункта)
-8. ## Как сэкономить без потери качества (5 пунктов)
-9. ## Когда выгоднее купить готовый ПК + 📦
-10. ## Частые вопросы — МИНИМУМ 5 ### вопросов с ответами, БЕЗ ПОВТОРОВ из основного текста
-11. ## Заключение + финальный 📦
-12. Постскриптум курсивом
-
-Бренды только у GPU/CPU. У ОЗУ, материнки, БП, корпуса, охлаждения — только характеристики.
-
-КРИТИЧНО: НЕ дублируй кейсы, цифры и факты в разных разделах. Каждая история — один раз. Фраза "гарантия 3 года и бесплатная доставка" — только в одном месте (в финальном 📦). FAQ задаёт новые вопросы, а не пересказывает разделы выше.
-
-Начинай прямо с \`TITLE:\`, никаких вступлений.`;
-
-  // Подключаем web_search tool если включено в UI
-  const tools = useWebSearch ? [{
-    type: 'web_search_20250305',
-    name: 'web_search',
-    max_uses: 5,
-    user_location: {
-      type: 'approximate',
-      country: 'RU',
-      timezone: 'Europe/Moscow'
-    }
-  }] : null;
-
-  try {
-    const data = await callClaude(key, userPrompt, tools, 16384, systemPrompt, 0.6);
-    // При веб-поиске Claude шлёт промежуточные тексты между поисками («сейчас поищу...»).
-    // Финальный текст со статьёй — обычно последний text-блок или тот, что содержит TITLE:
-    const textBlocks = (data.content || []).filter(c => c.type === 'text').map(c => c.text);
-    if (!textBlocks.length) throw new Error('Claude вернул пустой ответ');
-
-    let text;
-    // Ищем блок с TITLE: (это наша статья)
-    const articleBlock = textBlocks.find(t => /^TITLE:\s/m.test(t));
-    if (articleBlock) {
-      text = articleBlock.trim();
-    } else {
-      // Fallback: самый длинный блок (вероятнее всего статья)
-      text = textBlocks.reduce((a, b) => b.length > a.length ? b : a).trim();
-    }
-
-    // Логируем сколько поисков было использовано
-    if (useWebSearch) {
-      const searchCount = (data.content || []).filter(c =>
-        c.type === 'server_tool_use' && c.name === 'web_search'
-      ).length;
-      console.log(`Web search использован ${searchCount} раз`);
-    }
-
-    // Парсим TITLE: и H1
-    let title = '';
-    let body = text;
-    const titleMatch = text.match(/^TITLE:\s*(.+?)\s*\n/);
-    if (titleMatch) {
-      title = titleMatch[1].trim();
-      body = text.slice(titleMatch[0].length).trimStart();
-    }
-    const h1Match = body.match(/^#\s+(.+)/m);
-    const h1 = h1Match ? h1Match[1].trim() : title || 'Без заголовка';
-    if (!title) title = h1;
-
-    const textWithoutH1 = body.replace(/^#\s+.+\n?/m, '').trimStart();
-    const chars = body.length;
-
-    seoCurrentArticle = {
-      title, h1, fullText: body, textWithoutH1, chars,
-      generatedAt: new Date().toISOString(),
-      topic
-    };
-    saveSeoToHistory(seoCurrentArticle);
-    renderSeoResult();
-    hideSeoStatus();
-  } catch(e) {
-    setSeoStatus('Ошибка: ' + (e.message || 'не удалось получить ответ'), true);
-    console.error(e);
-  } finally {
-    btn.disabled = false;
-    btnText.textContent = 'Написать статью';
-  }
-}
 
 function renderSeoResult() {
   if (!seoCurrentArticle) return;
@@ -2166,7 +2246,6 @@ function renderSeoResult() {
   document.getElementById('seoResultActions').innerHTML = `
     <button class="copy-btn" onclick="copySeoText(event)">⎘ Markdown</button>
     <button class="copy-btn" onclick="copySeoHtml(event)">⎘ HTML</button>
-    <button class="publish-btn" id="seoPublishBtn" onclick="publishSeoToWP(event)">⬆ В WordPress</button>
   `;
   document.getElementById('seoResult').style.display = 'block';
   document.getElementById('seoResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2193,81 +2272,6 @@ function flashCopy(btn, msg) {
   setTimeout(() => { btn.textContent = orig; }, 1500);
 }
 
-/* ---- WORDPRESS ПУБЛИКАЦИЯ SEO-СТАТЬИ ---- */
-async function publishSeoToWP(e) {
-  e.stopPropagation();
-  const btn = e.target;
-  if (!seoCurrentArticle) return;
-
-  const wpUrl  = localStorage.getItem('wp_url');
-  const wpUser = localStorage.getItem('wp_user');
-  const wpPass = localStorage.getItem('wp_pass');
-  if (!wpUrl || !wpUser || !wpPass) {
-    alert('Сначала заполни настройки WordPress в сайдбаре');
-    return;
-  }
-
-  const status = document.getElementById('wpStatus').value;
-  const categoryId = document.getElementById('wpCategory').value;
-  const credentials = btoa(`${wpUser}:${wpPass}`);
-
-  btn.disabled = true;
-  const origText = btn.textContent;
-  btn.textContent = '↻ Публикую...';
-
-  try {
-    const htmlContent = typeof marked !== 'undefined'
-      ? marked.parse(seoCurrentArticle.textWithoutH1)
-      : seoCurrentArticle.textWithoutH1.replace(/\n/g, '<br>');
-
-    const postBody = {
-      title: seoCurrentArticle.h1,
-      content: htmlContent,
-      status,
-      format: 'standard'
-    };
-    if (categoryId) postBody.categories = [parseInt(categoryId)];
-
-    const resp = await fetch(`${wpUrl}/wp-json/wp/v2/posts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${credentials}` },
-      body: JSON.stringify(postBody)
-    });
-    const rawText = await resp.text();
-    let data = {};
-    try { data = JSON.parse(rawText); } catch {
-      throw new Error(`Сервер вернул не JSON (HTTP ${resp.status}): ${rawText.slice(0, 200)}`);
-    }
-    if (!resp.ok) throw new Error(data.message || data.error || 'HTTP ' + resp.status);
-
-    const postUrl = data.link || `${wpUrl}/?p=${data.id}`;
-    btn.textContent = '✓ Опубликовано';
-    btn.style.borderColor = 'var(--accent)';
-    btn.style.color = 'var(--accent)';
-    const actionsEl = btn.parentElement;
-    if (!actionsEl.querySelector('.wp-post-link')) {
-      const link = document.createElement('a');
-      link.className = 'wp-post-link';
-      link.href = postUrl;
-      link.target = '_blank';
-      link.textContent = '↗ Открыть';
-      link.style.cssText = 'font-size:12px;color:var(--accent);text-decoration:none;white-space:nowrap;padding:6px 10px;border:1px solid var(--accent);border-radius:6px;';
-      actionsEl.appendChild(link);
-    }
-  } catch(err) {
-    btn.textContent = '✗ Ошибка';
-    btn.style.borderColor = 'var(--danger)';
-    btn.style.color = 'var(--danger)';
-    alert('Ошибка публикации: ' + err.message);
-    setTimeout(() => {
-      btn.textContent = origText;
-      btn.style.borderColor = '';
-      btn.style.color = '';
-      btn.disabled = false;
-    }, 3000);
-  }
-}
-
 /* ---- ИСТОРИЯ SEO-СТАТЕЙ В localStorage ---- */
 const SEO_HISTORY_KEY = 'pcg_seo_history';
 const SEO_HISTORY_LIMIT = 30;
@@ -2281,7 +2285,10 @@ function saveSeoToHistory(art) {
   list.unshift({
     title: art.title, h1: art.h1, fullText: art.fullText,
     textWithoutH1: art.textWithoutH1, chars: art.chars,
-    generatedAt: art.generatedAt, topic: art.topic
+    generatedAt: art.generatedAt, topic: art.topic,
+    meta_description: document.getElementById('impMetaDesc')?.value || '',
+    slug: document.getElementById('impSlug')?.value || '',
+    tags: [...importedTags]
   });
   if (list.length > SEO_HISTORY_LIMIT) list.length = SEO_HISTORY_LIMIT;
   try { localStorage.setItem(SEO_HISTORY_KEY, JSON.stringify(list)); } catch(e) { console.warn('История не сохранилась:', e); }
@@ -2304,9 +2311,20 @@ function renderSeoHistory() {
 function restoreSeoFromHistory(idx) {
   const list = loadSeoHistory();
   if (!list[idx]) return;
-  seoCurrentArticle = list[idx];
-  document.getElementById('seoTopic').value = list[idx].topic || '';
+  const it = list[idx];
+  seoCurrentArticle = it;
+  // Заполняем SEO-поля
+  document.getElementById('impMetaTitle').value = it.title || it.h1 || '';
+  document.getElementById('impMetaDesc').value = it.meta_description || '';
+  document.getElementById('impSlug').value = it.slug || '';
+  document.getElementById('importFilename').textContent = `Из истории · ${it.chars.toLocaleString('ru-RU')} знаков`;
+  importedTags = Array.isArray(it.tags) ? [...it.tags] : [];
+  renderTagPills();
+  updateCharCount('impMetaTitle', 'metaTitleCount', 50, 70);
+  updateCharCount('impMetaDesc', 'metaDescCount', 150, 160);
+  document.getElementById('importFields').style.display = 'block';
   renderSeoResult();
+  document.getElementById('seoResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function deleteSeoFromHistory(idx) {
   const list = loadSeoHistory();
