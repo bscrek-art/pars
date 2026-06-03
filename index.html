@@ -298,11 +298,16 @@
         <input class="field-input" type="text" id="wpUser" placeholder="Логин пользователя" autocomplete="off">
         <input class="field-input" type="password" id="wpPass" placeholder="Application Password" autocomplete="off">
         <div class="wp-status-row">
-          <select class="wp-select" id="wpStatus">
+          <select class="wp-select" id="wpStatus" onchange="toggleScheduleField()">
             <option value="draft">Черновик</option>
             <option value="publish">Опубликовать</option>
+            <option value="future">Запланировать</option>
           </select>
           <button class="save-btn" style="margin:0;width:auto;padding:8px 12px;" onclick="saveWpSettings()">✓</button>
+        </div>
+        <div id="wpScheduleRow" style="display:none;margin-top:6px;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Дата и время публикации</div>
+          <input class="field-input" type="datetime-local" id="wpScheduleDate" style="width:100%;">
         </div>
         <select class="wp-select" id="wpCategory" style="margin-top:4px;">
           <option value="">— Рубрика (загрузи настройки) —</option>
@@ -654,6 +659,29 @@ renderTabs();
 loadWpSettings();
 
 /* ---- SETTINGS ---- */
+function toggleScheduleField() {
+  const status = document.getElementById('wpStatus').value;
+  const row = document.getElementById('wpScheduleRow');
+  row.style.display = status === 'future' ? 'block' : 'none';
+  if (status === 'future' && !document.getElementById('wpScheduleDate').value) {
+    // Подставляем завтра 10:00 по умолчанию
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(10, 0, 0, 0);
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('wpScheduleDate').value =
+      `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+}
+
+function getScheduledDate() {
+  const status = document.getElementById('wpStatus').value;
+  if (status !== 'future') return null;
+  const val = document.getElementById('wpScheduleDate').value;
+  if (!val) return null;
+  return new Date(val).toISOString();
+}
+
 function saveSettings() {
   const key = document.getElementById('apiKey').value.trim();
   if (!key.startsWith('sk-ant-')) { setApiStatus(false, 'Ключ должен начинаться с sk-ant-'); return; }
@@ -1258,6 +1286,37 @@ function parseClaudeJSON(text) {
   return null;
 }
 
+/* ---- FAQ SCHEMA BUILDER ---- */
+// Извлекает вопросы/ответы из markdown и возвращает объект FAQPage schema для RankMath
+function buildFaqSchema(markdownText) {
+  if (!markdownText) return null;
+  // Ищем раздел "Частые вопросы" или "FAQ"
+  const faqSectionMatch = markdownText.match(/##\s+(?:Частые вопросы|FAQ|Вопросы и ответы)([\s\S]*?)(?=^##\s|\s*$)/im);
+  if (!faqSectionMatch) return null;
+  const faqSection = faqSectionMatch[1];
+  // Извлекаем H3-вопросы и ответы после них
+  const qaItems = [];
+  const questionBlocks = faqSection.split(/^###\s+/m).filter(b => b.trim());
+  for (const block of questionBlocks) {
+    const lines = block.trim().split('\n');
+    const question = lines[0].trim().replace(/\?$/, '').trim() + '?';
+    const answer = lines.slice(1).join('\n').trim().replace(/^>\s*/gm, '').replace(/\*\*/g, '').trim();
+    if (question && answer && answer.length > 10) {
+      qaItems.push({ question, answer });
+    }
+  }
+  if (!qaItems.length) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: qaItems.map(item => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: { '@type': 'Answer', text: item.answer }
+    }))
+  };
+}
+
 /* ---- CLAUDE API ---- */
 async function callClaude(key, prompt, tools, maxTokens = 4096, system = null, temperature = null) {
   const body = {
@@ -1511,9 +1570,23 @@ async function publishToWordPress(idx, e) {
     // 3. Создаём пост
     btn.textContent = '↻ Публикую...';
     const categoryId = document.getElementById('wpCategory').value;
-    const postBody = { title, content: finalHtml, status, format: 'standard' };
+    const postBody = { title, content: finalHtml, status, format: 'standard', meta: {} };
     if (featuredMediaId) postBody.featured_media = featuredMediaId;
     if (categoryId) postBody.categories = [parseInt(categoryId)];
+    const schedDate = getScheduledDate();
+    if (schedDate) postBody.date = schedDate;
+
+    // RankMath мета-поля
+    postBody.meta['rank_math_title']       = title;
+    postBody.meta['rank_math_description'] = article.desc_ru || article.desc || '';
+    if (article.title_ru || article.game) {
+      postBody.meta['rank_math_focus_keyword'] = article.game || article.title_ru || '';
+    }
+    // FAQPage схема — извлекаем если есть FAQ в тексте
+    const faqSchema = buildFaqSchema(stored.text);
+    if (faqSchema) {
+      postBody.meta['rank_math_schema_FAQPage'] = JSON.stringify(faqSchema);
+    }
 
     const resp = await fetch(`${wpUrl}/wp-json/wp/v2/posts`, {
       method: 'POST',
@@ -2173,6 +2246,8 @@ async function publishImportedToWP() {
     if (slug) postBody.slug = slug;
     if (tagIds.length) postBody.tags = tagIds;
     if (categoryId) postBody.categories = [parseInt(categoryId)];
+    const schedDate = getScheduledDate();
+    if (schedDate) postBody.date = schedDate;
 
     // SEO мета (Yoast / RankMath / SEOPress)
     if (metaTitle) {
@@ -2184,6 +2259,15 @@ async function publishImportedToWP() {
       postBody.meta['_yoast_wpseo_metadesc']    = metaDesc;
       postBody.meta['rank_math_description']     = metaDesc;
       postBody.meta['_seopress_titles_desc']     = metaDesc;
+    }
+    // Фокусный ключевик — берём первый тег если есть
+    if (importedTags.length) {
+      postBody.meta['rank_math_focus_keyword'] = importedTags[0];
+    }
+    // FAQPage схема — извлекаем из текста если есть FAQ-блок
+    const faqSchema = buildFaqSchema(seoCurrentArticle.fullText);
+    if (faqSchema) {
+      postBody.meta['rank_math_schema_FAQPage'] = JSON.stringify(faqSchema);
     }
 
     const resp = await fetch(`${wpUrl}/wp-json/wp/v2/posts`, {
