@@ -1109,6 +1109,47 @@ async function startWriting() {
   document.getElementById('loadBtn').disabled = false;
 }
 
+/* ---- FETCH FULL ARTICLE TEXT ---- */
+async function fetchArticleText(url) {
+  const proxies = [
+    async u => {
+      const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(u)}`, { signal: AbortSignal.timeout(12000) });
+      if (!r.ok) throw new Error('bad');
+      return r.text();
+    },
+    async u => {
+      const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`, { signal: AbortSignal.timeout(12000) });
+      if (!r.ok) throw new Error('bad');
+      const j = await r.json(); return j.contents || '';
+    },
+    async u => {
+      const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`, { signal: AbortSignal.timeout(12000) });
+      if (!r.ok) throw new Error('bad');
+      return r.text();
+    },
+  ];
+  for (const proxy of proxies) {
+    try {
+      const html = await proxy(url);
+      if (!html || html.length < 300) continue;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      // Убираем мусор
+      ['script','style','nav','header','footer','aside','form',
+       '[class*="menu"]','[class*="sidebar"]','[class*="ad-"]','[class*="cookie"]',
+       '[class*="related"]','[class*="recommended"]','[class*="comment"]'
+      ].forEach(sel => { try { doc.querySelectorAll(sel).forEach(el => el.remove()); } catch {} });
+      // Ищем основной контент
+      const main = doc.querySelector(
+        'article, [class*="article-body"], [class*="post-content"], [class*="entry-content"], [class*="article-content"], [class*="story-body"], main'
+      );
+      const text = (main || doc.body).textContent.replace(/\s+/g, ' ').trim().slice(0, 7000);
+      if (text.length > 400) return text;
+    } catch {}
+  }
+  return '';
+}
+
 async function writeArticle(key, article) {
   // Шаг 1: картинки — из RSS / WP REST API / PHP прокси
   let images = article.rssImage ? [article.rssImage] : [];
@@ -1144,13 +1185,22 @@ async function writeArticle(key, article) {
     }
   } catch {}
 
+  // Шаг 1.5: получаем полный текст статьи
+  let fullArticleText = '';
+  try {
+    fullArticleText = await fetchArticleText(article.url);
+  } catch {}
+  const articleBody = fullArticleText
+    ? `Полный текст оригинала:\n${fullArticleText}`
+    : `Краткое описание: ${article.desc_ru || ''}`;
+
   // Шаг 2: рерайт через Claude напрямую
   const srcCategory = SOURCES[article.source]?.category || 'gaming';
   const prompt = srcCategory === 'features' ? `Ты — опытный автор для Яндекс Дзен, пишешь для магазина игровых ПК.
 
 МАТЕРИАЛ ДЛЯ ОБРАБОТКИ:
 Заголовок: ${article.title_en || article.title_ru}
-Описание: ${article.desc_ru || ''}
+${articleBody}
 Источник: ${article.url}
 
 СТРУКТУРА СТАТЬИ:
@@ -1171,7 +1221,7 @@ async function writeArticle(key, article) {
 
 ОБЗОР ДЛЯ ОБРАБОТКИ:
 Заголовок: ${article.title_en || article.title_ru}
-Описание: ${article.desc_ru || ''}
+${articleBody}
 Источник: ${article.url}
 
 СТРУКТУРА СТАТЬИ:
@@ -1193,7 +1243,7 @@ async function writeArticle(key, article) {
 
 НОВОСТЬ ДЛЯ ОБРАБОТКИ:
 Заголовок: ${article.title_en || article.title_ru}
-Описание: ${article.desc_ru || ''}
+${articleBody}
 Источник: ${article.url}
 
 СТРУКТУРА СТАТЬИ:
@@ -1214,7 +1264,7 @@ async function writeArticle(key, article) {
 
 МАТЕРИАЛ ОБ ОЦЕНКЕ ИГРЫ:
 Заголовок: ${article.title_en || article.title_ru}
-Описание: ${article.desc_ru || ''}
+${articleBody}
 Источник: ${article.url}
 
 СТРУКТУРА СТАТЬИ:
@@ -1235,7 +1285,7 @@ async function writeArticle(key, article) {
 
 НОВОСТЬ ДЛЯ ОБРАБОТКИ:
 Заголовок: ${article.title_en || article.title_ru}
-Описание: ${article.desc_ru || ''}
+${articleBody}
 Источник: ${article.url}
 
 СТРУКТУРА СТАТЬИ:
