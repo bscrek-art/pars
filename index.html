@@ -1120,13 +1120,26 @@ async function fetchFullTextFromRSS(article) {
     const xml = await fetchRSSWithFallback(srcConf);
     const doc = new DOMParser().parseFromString(xml, 'text/xml');
     const items = [...doc.querySelectorAll('item, entry')];
-    // Находим нужную статью по URL
-    const matched = items.find(item => {
+
+    // 1. Ищем по точному совпадению URL
+    let matched = items.find(item => {
       const link = item.querySelector('link')?.textContent?.trim()
                 || item.querySelector('link')?.getAttribute('href') || '';
       return link === article.url;
     });
+
+    // 2. Если не нашли (напр. article.url — Google-редирект) — ищем по заголовку
+    if (!matched && article.title_en) {
+      const normalize = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const targetTitle = normalize(article.title_en);
+      matched = items.find(item => {
+        const t = normalize(item.querySelector('title')?.textContent || '');
+        return t && targetTitle && t === targetTitle;
+      });
+    }
+
     if (!matched) return '';
+
     const encoded = matched.getElementsByTagNameNS(
       'http://purl.org/rss/1.0/modules/content/', 'encoded'
     )[0]?.textContent || '';
