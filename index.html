@@ -808,6 +808,7 @@ function parseRSS(xml) {
     // WordPress post-id (для получения featured image через WP REST API)
     const postIdEl = item.getElementsByTagName('post-id')[0];
     const postId = postIdEl ? postIdEl.textContent.trim() : '';
+
     return {
       title: item.querySelector('title')?.textContent?.trim() || '',
       link:  item.querySelector('link')?.textContent?.trim() || item.querySelector('link')?.getAttribute('href') || '',
@@ -1109,9 +1110,53 @@ async function startWriting() {
   document.getElementById('loadBtn').disabled = false;
 }
 
+/* ---- FETCH FULL TEXT FROM RSS (по URL статьи, без токенов) ---- */
+async function fetchFullTextFromRSS(article) {
+  const srcConf = SOURCES[article.source];
+  if (!srcConf) return '';
+  try {
+    const xml = await fetchRSSWithFallback(srcConf);
+    const doc = new DOMParser().parseFromString(xml, 'text/xml');
+    const items = [...doc.querySelectorAll('item, entry')];
+    // Находим нужную статью по URL
+    const matched = items.find(item => {
+      const link = item.querySelector('link')?.textContent?.trim()
+                || item.querySelector('link')?.getAttribute('href') || '';
+      return link === article.url;
+    });
+    if (!matched) return '';
+    const encoded = matched.getElementsByTagNameNS(
+      'http://purl.org/rss/1.0/modules/content/', 'encoded'
+    )[0]?.textContent || '';
+    if (!encoded) return '';
+    return encoded.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 8000);
+  } catch { return ''; }
+}
+
 /* ---- FETCH FULL ARTICLE TEXT ---- */
 async function fetchArticleText(url) {
-  const proxies = [
+  // 1. Свой PHP-прокси (надёжнее всего)
+  try {
+    const r = await fetch(
+      PROXY_URL.replace('proxy.php', 'fetch_article.php'),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+        signal: AbortSignal.timeout(15000),
+      }
+    );
+    if (r.ok) {
+      const j = await r.json();
+      if (j.ok && j.text && j.text.length > 400) {
+        console.log('[fetchArticle] OK via own proxy, len=', j.text.length);
+        return j.text;
+      }
+    }
+  } catch(e) { console.warn('[fetchArticle] own proxy failed:', e.message); }
+
+  // 2. Публичные CORS-прокси как fallback
+  const publicProxies = [
     async u => {
       const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(u)}`, { signal: AbortSignal.timeout(12000) });
       if (!r.ok) throw new Error('bad');
@@ -1128,25 +1173,27 @@ async function fetchArticleText(url) {
       return r.text();
     },
   ];
-  for (const proxy of proxies) {
+  for (const proxy of publicProxies) {
     try {
       const html = await proxy(url);
       if (!html || html.length < 300) continue;
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
-      // Убираем мусор
       ['script','style','nav','header','footer','aside','form',
        '[class*="menu"]','[class*="sidebar"]','[class*="ad-"]','[class*="cookie"]',
        '[class*="related"]','[class*="recommended"]','[class*="comment"]'
       ].forEach(sel => { try { doc.querySelectorAll(sel).forEach(el => el.remove()); } catch {} });
-      // Ищем основной контент
       const main = doc.querySelector(
         'article, [class*="article-body"], [class*="post-content"], [class*="entry-content"], [class*="article-content"], [class*="story-body"], main'
       );
       const text = (main || doc.body).textContent.replace(/\s+/g, ' ').trim().slice(0, 7000);
-      if (text.length > 400) return text;
-    } catch {}
+      if (text.length > 400) {
+        console.log('[fetchArticle] OK via public proxy, len=', text.length);
+        return text;
+      }
+    } catch(e) { console.warn('[fetchArticle] public proxy failed:', e.message); }
   }
+  console.warn('[fetchArticle] all proxies failed for', url);
   return '';
 }
 
@@ -1186,10 +1233,12 @@ async function writeArticle(key, article) {
   } catch {}
 
   // Шаг 1.5: получаем полный текст статьи
-  let fullArticleText = '';
-  try {
-    fullArticleText = await fetchArticleText(article.url);
-  } catch {}
+  // 1. Повторно идём в RSS за content:encoded для этой конкретной статьи
+  // 2. Если RSS не дал — пробуем через прокси напрямую
+  let fullArticleText = await fetchFullTextFromRSS(article);
+  if (!fullArticleText) {
+    try { fullArticleText = await fetchArticleText(article.url); } catch {}
+  }
   const articleBody = fullArticleText
     ? `Полный текст оригинала:\n${fullArticleText}`
     : `Краткое описание: ${article.desc_ru || ''}`;
