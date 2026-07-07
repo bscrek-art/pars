@@ -582,6 +582,11 @@ const SOURCES = {
       'https://news.google.com/rss/search?q=site:gameguru.ru&hl=ru&gl=RU&ceid=RU:ru'
     ]
   },
+  dtf_ru: {
+    id: 'dtf_ru', name: 'DTF', domain: 'dtf.ru',
+    category: 'ru', useProxy: false,
+    rssUrls: ['https://dtf.ru/rss']
+  },
 };
 
 let allArticles = Object.fromEntries(Object.keys(SOURCES).map(k => [k, []]));
