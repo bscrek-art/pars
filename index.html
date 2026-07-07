@@ -338,9 +338,6 @@
         <button class="cat-btn" id="cat-features" onclick="switchCategory('features',this)">
           <span class="cat-icon">✦</span>Фичи и гайды
         </button>
-        <button class="cat-btn" id="cat-ratings" onclick="switchCategory('ratings',this)">
-          <span class="cat-icon">🏆</span>Оценки игр
-        </button>
         <button class="cat-btn" id="cat-seo" onclick="switchCategory('seo',this)">
           <span class="cat-icon">✍</span>Экспертные статьи
         </button>
@@ -549,28 +546,6 @@ const SOURCES = {
       'https://news.google.com/rss/search?q=site:videocardz.com&hl=en-US&gl=US&ceid=US:en'
     ]
   },
-  // --- Оценки игр ---
-  metacritic_news: {
-    id: 'metacritic_news', name: 'Metacritic Новости', domain: 'news.google.com',
-    category: 'ratings', useProxy: true,
-    rssUrls: [
-      'https://news.google.com/rss/search?q=%22metacritic+score%22+game&hl=en-US&gl=US&ceid=US:en'
-    ]
-  },
-  opencritic_news: {
-    id: 'opencritic_news', name: 'OpenCritic Новости', domain: 'news.google.com',
-    category: 'ratings', useProxy: true,
-    rssUrls: [
-      'https://news.google.com/rss/search?q=%22opencritic%22+game+score&hl=en-US&gl=US&ceid=US:en'
-    ]
-  },
-  twistedvoxel_ratings: {
-    id: 'twistedvoxel_ratings', name: 'TwistedVoxel Оценки', domain: 'twistedvoxel.com',
-    category: 'ratings', useProxy: true,
-    rssUrls: [
-      'https://news.google.com/rss/search?q=site:twistedvoxel.com+metacritic&hl=en-US&gl=US&ceid=US:en'
-    ]
-  },
   // --- Обзоры ---
   techtesters_reviews: {
     id: 'techtesters_reviews', name: 'TechTesters Обзоры', domain: 'techtesters.eu',
@@ -578,11 +553,6 @@ const SOURCES = {
     rssUrls: ['https://www.techtesters.eu/category/z-review/feed/']
   },
   // --- Фичи и гайды ---
-  kotaku: {
-    id: 'kotaku', name: 'Kotaku', domain: 'kotaku.com',
-    category: 'features', useProxy: false,
-    rssUrls: ['https://kotaku.com/rss', 'https://kotaku.com/feed']
-  },
   arstechnica: {
     id: 'arstechnica', name: 'Ars Technica', domain: 'arstechnica.com',
     category: 'features', useProxy: false,
@@ -853,8 +823,6 @@ async function startLoad() {
     const isHardware = src.category === 'hardware';
     const isReviews = src.category === 'reviews';
     const isFeatures = src.category === 'features';
-    const isRatings = src.category === 'ratings';
-
     // Все категории — 20 записей (меньше токенов, надёжнее JSON)
     const feedItems = items.slice(0, 20);
     const feedText = feedItems.map((it, i) =>
@@ -919,26 +887,6 @@ ${feedText}
     "url": "https://...",
     "relevance": "high|medium|low",
     "game": "Название игры или устройства или null"
-  }
-]`
-      : isRatings
-      ? `Ты — редактор новостного сайта. Проанализируй RSS-ленту и выбери статьи про оценки и рейтинги игр.
-
-RSS-лента (${src.name}):
-${feedText}
-
-Задача: выбери до 20 статей об оценках игр — рецензии, обзоры с баллами, итоговые оценки от критиков (Metacritic, OpenCritic, редакционные оценки), обсуждения рейтингов, спорные оценки. Исключай гайды, новости о патчах без оценок, списки "топ-N" без рецензионного контекста.
-ВАЖНО: в строках JSON не используй символ двойной кавычки " — заменяй на «» или убирай.
-
-Верни ТОЛЬКО JSON-массив без лишнего текста:
-[
-  {
-    "title_en": "...",
-    "title_ru": "Русский заголовок",
-    "desc_ru": "1-2 предложения: название игры, оценка/балл если есть, суть мнения без кавычек",
-    "url": "https://...",
-    "relevance": "high|medium|low",
-    "game": "Название игры или null"
   }
 ]`
       : `Ты — редактор новостного сайта. Проанализируй RSS-ленту и выбери нужные статьи.
