@@ -338,6 +338,9 @@
         <button class="cat-btn" id="cat-features" onclick="switchCategory('features',this)">
           <span class="cat-icon">✦</span>Фичи и гайды
         </button>
+        <button class="cat-btn" id="cat-ru" onclick="switchCategory('ru',this)">
+          <span class="cat-icon">🇷🇺</span>RU-сайты
+        </button>
         <button class="cat-btn" id="cat-seo" onclick="switchCategory('seo',this)">
           <span class="cat-icon">✍</span>Экспертные статьи
         </button>
@@ -564,6 +567,33 @@ const SOURCES = {
     rssUrls: [
       'https://screenrant.com/feed/',
       'https://news.google.com/rss/search?q=site:screenrant.com+gaming&hl=en-US&gl=US&ceid=US:en'
+    ]
+  },
+  // --- RU-сайты ---
+  playground_ru: {
+    id: 'playground_ru', name: 'Playground.ru', domain: 'playground.ru',
+    category: 'ru', useProxy: false,
+    rssUrls: ['https://www.playground.ru/rss/news.xml']
+  },
+  ixbt_games: {
+    id: 'ixbt_games', name: 'iXBT.games', domain: 'ixbt.games',
+    category: 'ru', useProxy: true,
+    rssUrls: [
+      'https://news.google.com/rss/search?q=site:ixbt.games+игры&hl=ru&gl=RU&ceid=RU:ru'
+    ]
+  },
+  gameguru_ru: {
+    id: 'gameguru_ru', name: 'GameGuru.ru', domain: 'gameguru.ru',
+    category: 'ru', useProxy: true,
+    rssUrls: [
+      'https://news.google.com/rss/search?q=site:gameguru.ru&hl=ru&gl=RU&ceid=RU:ru'
+    ]
+  },
+  gamer_ru: {
+    id: 'gamer_ru', name: 'Gamer.ru', domain: 'gamer.ru',
+    category: 'ru', useProxy: true,
+    rssUrls: [
+      'https://news.google.com/rss/search?q=site:gamer.ru+игры&hl=ru&gl=RU&ceid=RU:ru'
     ]
   },
 };
@@ -823,6 +853,7 @@ async function startLoad() {
     const isHardware = src.category === 'hardware';
     const isReviews = src.category === 'reviews';
     const isFeatures = src.category === 'features';
+    const isRu = src.category === 'ru';
     // Все категории — 20 записей (меньше токенов, надёжнее JSON)
     const feedItems = items.slice(0, 20);
     const feedText = feedItems.map((it, i) =>
@@ -867,6 +898,26 @@ ${feedText}
     "url": "https://...",
     "relevance": "high|medium|low",
     "game": "Название устройства или null"
+  }
+]`
+      : isRu
+      ? `Ты — редактор новостного сайта. Отбери интересные статьи из RSS-ленты русскоязычного игрового сайта.
+
+RSS-лента (${src.name}):
+${feedText}
+
+Задача: выбери до 20 самых интересных материалов про игры — анонсы, релизы, обзоры, новости индустрии. Перевод НЕ нужен, статьи уже на русском.
+ВАЖНО: в строках JSON не используй символ двойной кавычки " — заменяй на «» или убирай.
+
+Верни ТОЛЬКО JSON-массив без лишнего текста:
+[
+  {
+    "title_en": "",
+    "title_ru": "Оригинальный русский заголовок",
+    "desc_ru": "1-2 предложения краткого описания на русском без кавычек",
+    "url": "https://...",
+    "relevance": "high|medium|low",
+    "game": "Название игры или null"
   }
 ]`
       : isFeatures
