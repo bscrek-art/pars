@@ -471,7 +471,7 @@
 </div>
 
 <script>
-const PROXY_URL = 'https://akari42.tw1.ru/test/proxy.php';
+const PROXY_URL = '/api/proxy';
 
 const SOURCES = {
   // --- Игровые новости ---
@@ -1179,7 +1179,7 @@ async function fetchArticleText(url) {
   // 1. Свой PHP-прокси (надёжнее всего)
   try {
     const r = await fetch(
-      PROXY_URL.replace('proxy.php', 'fetch_article.php'),
+      '/api/fetch_article',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
